@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wealth Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <base target="_blank">
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="relative min-h-screen flex flex-col overflow-x-hidden w-full">
+
+    <!-- Full-screen loading spinner — shown while Firebase checks stored session (usually < 300ms) -->
+    <div id="loading-screen" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center gap-4">
+        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-sm text-slate-400 font-medium">Loading your portal…</p>
+    </div>
+
+    <!-- Secure Login Overlay — starts hidden; only shown when no session is found -->
+    <div id="auth-screen" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full mx-4 border border-slate-100">
+            <div class="flex justify-center mb-4">
+                <i class="ph-fill ph-lock-key text-4xl text-blue-600"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2 text-center">My Portal Access</h2>
+            <p class="text-sm text-slate-500 mb-6 text-center">Sign in once. Your session is remembered on this device.</p>
+
+            <form id="auth-form" onsubmit="window.handleAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Email Address</label>
+                    <input type="email" id="auth-email" required
+                        class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+                    <input type="password" id="auth-password" required
+                        class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" onclick="window.authMode='login'"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 text-sm rounded-lg transition-colors">Sign In</button>
+                </div>
+                <p id="auth-error" class="text-xs text-red-500 mt-2 hidden text-center font-medium"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER (Hidden until logged in) -->
+    <div id="main-app" class="hidden flex-1 flex flex-col h-full">
+
+        <!-- Navigation Bar -->
+        <nav class="bg-white border-b border-slate-200 sticky top-0 z-40 mb-6 shadow-sm shrink-0">
+            <div class="max-w-6xl mx-auto px-4 flex justify-between items-center h-16">
+                <div class="font-bold text-lg text-blue-600 flex items-center gap-2">
+                    <i class="ph-fill ph-wallet"></i> Wealth Portal
+                </div>
+                <!-- Desktop Nav -->
+                <div class="hidden md:flex gap-1">
+                    <button id="tab-btn-home" onclick="window.switchTab('home')"
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Home</button>
+                    <button id="tab-btn-calculator" onclick="window.switchTab('calculator')"
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Planner</button>
+                    <button id="tab-btn-tracker" onclick="window.switchTab('tracker')"
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Tracker</button>
+                    <button id="tab-btn-sheets" onclick="window.switchTab('sheets')"
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Master Sheets</button>
+                    <button id="tab-btn-soup" onclick="window.switchTab('soup')"
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Soup Master</button>
+                    <!-- Cross-app link — session is shared, no re-login needed -->
+                    <a href="EveryTrace.html" target="_self"
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors flex items-center gap-1.5 text-indigo-600 hover:bg-indigo-50"
+                        title="Switch to EveryTrace">
+                        <i class="ph-bold ph-hourglass-medium"></i> EveryTrace
+                    </a>
+                </div>
+                <!-- Right side: App switch + Logout -->
+                <div class="flex items-center gap-2">
+                    <a href="EveryTrace.html" target="_self"
+                        class="hidden md:flex text-xs font-semibold px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors items-center gap-1"
+                        style="display:none"
+                        title="Open EveryTrace (session shared)">
+                        <i class="ph-bold ph-hourglass-medium"></i>
+                    </a>
+                    <button id="logout-btn" onclick="window.logout()"
+                        class="text-xs font-semibold px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1">
+                        <i class="ph-bold ph-sign-out"></i> Logout
+                    </button>
+                </div>
+            </div>
+            <!-- Mobile Nav (Scrollable) -->
+            <div class="md:hidden flex gap-2 overflow-x-auto px-4 pb-2 custom-scrollbar">
+                <button id="mob-tab-btn-home" onclick="window.switchTab('home')"
+                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Home</button>
+                <button id="mob-tab-btn-calculator" onclick="window.switchTab('calculator')"
+                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Planner</button>
+                <button id="mob-tab-btn-tracker" onclick="window.switchTab('tracker')"
+                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Tracker</button>
+                <button id="mob-tab-btn-sheets" onclick="window.switchTab('sheets')"
+                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Master Sheets</button>
+                <button id="mob-tab-btn-soup" onclick="window.switchTab('soup')"
+                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Soup Master</button>
+                <a href="EveryTrace.html" target="_self"
+                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-indigo-600 bg-indigo-50 flex items-center gap-1">
+                    <i class="ph-bold ph-hourglass-medium"></i> EveryTrace
+                </a>
+            </div>
+        </nav>
+
+        <main class="flex-1 pb-12 w-full h-full">
+
+            <!-- ================= VIEW 1: HOME ================= -->
+            <div id="view-home" class="animate-fade-in max-w-6xl mx-auto px-4 md:px-8">
+                <div
+                    class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-3xl p-8 md:p-12 text-white shadow-lg relative overflow-hidden mb-8">
+                    <div class="relative z-10">
+                        <h1 class="text-3xl md:text-5xl font-bold mb-4">Welcome to Your Wealth Portal</h1>
+                        <p class="text-blue-100 text-lg md:text-xl max-w-2xl mb-8">Your central hub for executing the
+                            5:3:1:1 allocation strategy, tracking daily food limits, and managing long-term investments.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl">
+                            <div onclick="window.switchTab('calculator')"
+                                class="group bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 flex items-center gap-4 hover:bg-white/20 hover:scale-105 transition-all cursor-pointer">
+                                <div class="bg-blue-500/30 p-3 rounded-xl group-hover:bg-blue-500/50 transition-colors">
+                                    <i class="ph ph-target text-2xl"></i></div>
+                                <div>
+                                    <p class="text-blue-100 text-sm font-medium">Core Strategy</p>
+                                    <p class="font-bold text-lg">Planner</p>
+                                </div>
+                            </div>
+                            <div onclick="window.switchTab('tracker')"
+                                class="group bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 flex items-center gap-4 hover:bg-white/20 hover:scale-105 transition-all cursor-pointer">
+                                <div class="bg-emerald-500/30 p-3 rounded-xl group-hover:bg-emerald-500/50 transition-colors">
+                                    <i class="ph ph-hamburger text-2xl"></i></div>
+                                <div>
+                                    <p class="text-blue-100 text-sm font-medium">Weekly Limit</p>
+                                    <p class="font-bold text-lg">Tracker</p>
+                                </div>
+                            </div>
+                            <div onclick="window.switchTab('sheets')"
+                                class="group bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 flex items-center gap-4 hover:bg-white/20 hover:scale-105 transition-all cursor-pointer">
+                                <div class="bg-purple-500/30 p-3 rounded-xl group-hover:bg-purple-500/50 transition-colors">
+                                    <i class="ph ph-table text-2xl"></i></div>
+                                <div>
+                                    <p class="text-blue-100 text-sm font-medium">Master Sheets</p>
+                                    <p class="font-bold text-lg">Quick Links</p>
+                                </div>
+                            </div>
+                            <div onclick="window.switchTab('soup')"
+                                class="group bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 flex items-center gap-4 hover:bg-white/20 hover:scale-105 transition-all cursor-pointer">
+                                <div class="bg-orange-500/30 p-3 rounded-xl group-hover:bg-orange-500/50 transition-colors">
+                                    <i class="ph ph-bowl-steam text-2xl"></i></div>
+                                <div>
+                                    <p class="text-blue-100 text-sm font-medium">Herbal Soup</p>
+                                    <p class="font-bold text-lg">Soup Master</p>
+                                </div>
+                            </div>
+                            <!-- EveryTrace cross-app link card -->
+                            <a href="EveryTrace.html" target="_self"
+                                class="group bg-indigo-500/20 backdrop-blur-md border border-indigo-300/30 rounded-2xl p-5 flex items-center gap-4 hover:bg-indigo-500/30 hover:scale-105 transition-all cursor-pointer no-underline">
+                                <div class="bg-indigo-500/30 p-3 rounded-xl group-hover:bg-indigo-500/50 transition-colors">
+                                    <i class="ph ph-hourglass-medium text-2xl"></i></div>
+                                <div>
+                                    <p class="text-indigo-200 text-sm font-medium">Life Tracker</p>
+                                    <p class="font-bold text-lg text-white">EveryTrace</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    <i
+                        class="ph-fill ph-wallet text-[300px] text-white/5 absolute -right-20 -bottom-20 rotate-12 z-0"></i>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 2: CALCULATOR ================= -->
+            <div id="view-calculator" class="hidden animate-fade-in max-w-6xl mx-auto px-4 md:px-8 h-full">
+                <header class="mb-6 md:mb-8 border-b border-slate-200 pb-4">
+                    <h2 class="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2 md:gap-3">
+                        <i class="ph-fill ph-chart-pie-slice text-blue-600"></i>
+                        Interactive Budget Planner
+                    </h2>
+                    <p class="text-slate-500 mt-1 text-xs md:text-sm">Adjust percentages and fixed expenses to see your
+                        real-time breakdown and daily limits.</p>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 pb-8">
+                    <!-- Inputs -->
+                    <div class="space-y-6 md:space-y-8">
+                        <div class="bg-white p-4 md:p-5 rounded-xl md:rounded-2xl border border-slate-200 shadow-sm">
+                            <label class="block text-xs md:text-sm font-semibold text-slate-700 mb-2">Monthly Net
+                                Income</label>
+                            <div class="relative">
+                                <span
+                                    class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">RM</span>
+                                <input type="number" id="calc-income" value="6700"
+                                    oninput="window.calculateAndUpdateUI()"
+                                    class="w-full pl-12 pr-4 py-2 md:py-3 rounded-lg md:rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-base md:text-lg font-bold text-slate-800 bg-slate-50 shadow-inner transition-all">
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-3 md:mb-4">
+                                <h3 class="text-base md:text-lg font-bold text-slate-800">Allocation (5:3:1:1)</h3>
+                                <span
+                                    class="text-[10px] md:text-xs font-semibold px-2 py-1 bg-blue-100 text-blue-700 rounded-md shadow-sm"
+                                    id="total-pct-badge">Total: <span id="total-pct">0</span>%</span>
+                            </div>
+                            <div id="cat-container" class="space-y-2 md:space-y-3"></div>
+
+                            <button onclick="window.addCat()"
+                                class="mt-3 md:mt-4 flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 px-3 py-2 rounded-lg w-full justify-center border border-blue-100">
+                                <i class="ph-bold ph-plus-circle text-base md:text-lg"></i> Add Category
+                            </button>
+                        </div>
+
+                        <div>
+                            <h3 class="text-base md:text-lg font-bold text-slate-800 mb-3 md:mb-4">Fixed Expenses</h3>
+                            <div id="exp-container" class="space-y-2 md:space-y-3"></div>
+                            <button onclick="window.addExp()"
+                                class="mt-3 md:mt-4 flex items-center gap-1 md:gap-2 text-xs md:text-sm font-semibold text-emerald-600 hover:text-emerald-800 transition-colors bg-emerald-50 px-3 py-2 rounded-lg w-full justify-center border border-emerald-100">
+                                <i class="ph-bold ph-plus-circle text-base md:text-lg"></i> Add Fixed Expense
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Chart & Summary -->
+                    <div
+                        class="bg-white shadow-sm p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 flex flex-col sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto custom-scrollbar">
+                        <h3 class="text-base md:text-lg font-bold text-slate-800 mb-4 md:mb-6 text-center shrink-0">
+                            Visual Breakdown</h3>
+
+                        <div
+                            class="relative w-full max-w-[200px] md:max-w-[240px] mx-auto aspect-square mb-6 md:mb-8 shrink-0">
+                            <canvas id="budgetChart"></canvas>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 md:gap-4 shrink-0">
+                            <div class="bg-slate-50 p-3 md:p-4 rounded-xl shadow-sm border border-slate-100">
+                                <p class="text-[10px] md:text-xs text-slate-500 font-medium mb-1">Total Fixed Expenses
+                                </p>
+                                <p class="text-lg md:text-xl font-bold text-slate-800" id="total-exp-rm">RM 0</p>
+                            </div>
+                            <div class="bg-emerald-50 p-3 md:p-4 rounded-xl shadow-sm border border-emerald-100">
+                                <p class="text-[10px] md:text-xs text-emerald-600 font-medium mb-1" id="rem-title">
+                                    Remaining Buffer</p>
+                                <p class="text-lg md:text-xl font-bold text-emerald-700" id="rem-rm">RM 0</p>
+                            </div>
+                        </div>
+
+                        <!-- 1. Daily Allowance Calculator -->
+                        <div
+                            class="mt-4 md:mt-6 bg-slate-50 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 shrink-0">
+                            <div class="flex justify-between items-center mb-2 md:mb-3">
+                                <h4 class="text-xs md:text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="ph-fill ph-calendar text-blue-500 text-base md:text-lg"></i>
+                                    Daily Allowance Calculator
+                                </h4>
+                                <span
+                                    class="text-[10px] md:text-xs font-semibold px-2 py-1 bg-blue-100 text-blue-700 rounded-md shadow-sm"
+                                    id="calc-weekly-budget">Weekly: RM 0</span>
+                            </div>
+                            <p class="text-[10px] md:text-xs text-slate-500 mb-3 md:mb-4">Calculates your weekend
+                                allowance based on your weekday cap and remaining buffer.</p>
+
+                            <div class="grid grid-cols-2 gap-3 md:gap-4">
+                                <div>
+                                    <label
+                                        class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">Weekday
+                                        Cap (RM)</label>
+                                    <input type="number" id="wd-input" value="35"
+                                        oninput="window.calculateAndUpdateUI()"
+                                        class="w-full border border-slate-300 rounded-lg p-2 text-xs md:text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-shadow">
+                                    <p class="text-[9px] md:text-[10px] text-slate-400 mt-1">x 20 working days</p>
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">Weekend
+                                        Allowance</label>
+                                    <div class="relative">
+                                        <span
+                                            class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs md:text-sm font-medium">RM</span>
+                                        <input type="number" id="we-input" readonly
+                                            class="w-full border border-emerald-200 bg-emerald-100 rounded-lg p-2 pl-7 md:pl-8 text-xs md:text-sm font-bold text-emerald-800 outline-none">
+                                    </div>
+                                    <p class="text-[9px] md:text-[10px] text-slate-400 mt-1">Avail. per weekend (8 days)
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Wealth Growth Calculator -->
+                        <div
+                            class="mt-4 md:mt-4 bg-slate-50 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 shrink-0 mb-2">
+                            <div class="flex justify-between items-center mb-2 md:mb-3">
+                                <h4 class="text-xs md:text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="ph-fill ph-trend-up text-purple-500 text-base md:text-lg"></i>
+                                    Wealth Growth Calculator
+                                </h4>
+                                <span
+                                    class="text-[10px] md:text-xs font-semibold px-2 py-1 bg-purple-100 text-purple-700 rounded-md shadow-sm"
+                                    id="calc-future-value">Future: RM 0</span>
+                            </div>
+                            <p class="text-[10px] md:text-xs text-slate-500 mb-3 md:mb-4">Project your long-term wealth
+                                using compound interest calculations.</p>
+
+                            <div class="grid grid-cols-2 gap-3 md:gap-4 mb-3">
+                                <div>
+                                    <label
+                                        class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">Starting
+                                        Amount (RM)</label>
+                                    <input type="number" id="grow-principal" value="0"
+                                        oninput="window.calculateGrowth()"
+                                        class="w-full border border-slate-300 rounded-lg p-2 text-xs md:text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-shadow">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">Monthly
+                                        Addition (RM)</label>
+                                    <input type="number" id="grow-monthly" value="1500"
+                                        oninput="window.calculateGrowth()"
+                                        class="w-full border border-slate-300 rounded-lg p-2 text-xs md:text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-shadow">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 md:gap-4">
+                                <div>
+                                    <label class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">Annual
+                                        Return (%)</label>
+                                    <input type="number" step="0.1" id="grow-rate" value="5.5"
+                                        oninput="window.calculateGrowth()"
+                                        class="w-full border border-slate-300 rounded-lg p-2 text-xs md:text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-shadow">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">Years
+                                        to Grow</label>
+                                    <input type="number" id="grow-years" value="10" oninput="window.calculateGrowth()"
+                                        class="w-full border border-slate-300 rounded-lg p-2 text-xs md:text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-shadow">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. FD Passive Income Generator -->
+                        <div
+                            class="mt-4 md:mt-4 bg-slate-50 p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 shrink-0 mb-2">
+                            <div class="flex justify-between items-center mb-2 md:mb-3">
+                                <h4 class="text-xs md:text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="ph-fill ph-bank text-orange-500 text-base md:text-lg"></i>
+                                    FD Passive Income Generator
+                                </h4>
+                            </div>
+                            <p class="text-[10px] md:text-xs text-slate-500 mb-3 md:mb-4">Calculate monthly interest
+                                from a 12-month FD ladder and the principal required to hit your target.</p>
+
+                            <div class="grid grid-cols-2 gap-3 md:gap-4 mb-3">
+                                <div>
+                                    <label class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">Total
+                                        Principal (RM)</label>
+                                    <input type="number" id="fd-principal" value="1200000"
+                                        oninput="window.calculateFD()"
+                                        class="w-full border border-slate-300 rounded-lg p-2 text-xs md:text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-shadow">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">Target
+                                        Monthly (RM)</label>
+                                    <input type="number" id="fd-target" value="4000" oninput="window.calculateFD()"
+                                        class="w-full border border-slate-300 rounded-lg p-2 text-xs md:text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-shadow">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 md:gap-4 mb-4">
+                                <div>
+                                    <label class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">FD
+                                        Interest p.a. (%)</label>
+                                    <input type="number" step="0.1" id="fd-rate" value="4.0"
+                                        oninput="window.calculateFD()"
+                                        class="w-full border border-slate-300 rounded-lg p-2 text-xs md:text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-shadow">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-[10px] md:text-xs font-semibold text-slate-600 mb-1">Inflation
+                                        p.a. (%)</label>
+                                    <input type="number" step="0.1" id="fd-inflation" value="3.0"
+                                        oninput="window.calculateFD()"
+                                        class="w-full border border-slate-300 rounded-lg p-2 text-xs md:text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-shadow">
+                                </div>
+                            </div>
+
+                            <div class="bg-orange-100/50 border border-orange-200 rounded-lg p-3 space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] md:text-xs text-slate-600 font-medium">Monthly Interest
+                                        (Gross)</span>
+                                    <span class="text-xs md:text-sm font-bold text-orange-700" id="fd-monthly-gross">RM
+                                        0</span>
+                                </div>
+                                <div class="flex justify-between items-center pb-2 border-b border-orange-200/60">
+                                    <span class="text-[10px] md:text-xs text-slate-600 font-medium">Real Income (After
+                                        Inflation)</span>
+                                    <span class="text-xs md:text-sm font-bold text-orange-700" id="fd-monthly-real">RM
+                                        0</span>
+                                </div>
+                                <div class="flex justify-between items-center pt-1">
+                                    <span class="text-[10px] md:text-xs text-slate-600 font-medium">Needed for Target
+                                        (Gross)</span>
+                                    <span class="text-xs md:text-sm font-bold text-slate-800" id="fd-needed-gross">RM
+                                        0</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] md:text-xs text-slate-600 font-medium">Needed for Target
+                                        (Real)</span>
+                                    <span class="text-xs md:text-sm font-bold text-slate-800" id="fd-needed-real">RM
+                                        0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 3: TRACKER ================= -->
+            <div id="view-tracker" class="hidden animate-fade-in max-w-6xl mx-auto px-4 md:px-8 h-full">
+                <header class="mb-8 shrink-0 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Weekly Expense Tracker</h2>
+                        <p class="text-slate-500 text-sm mt-1">Automatically refreshes every Monday. Past weeks are
+                            saved below.</p>
+                    </div>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full pb-8">
+                    <!-- Left Column: Inputs & History -->
+                    <div class="lg:col-span-1 flex flex-col gap-6 shrink-0 h-full">
+
+                        <!-- Auto Synced Card -->
+                        <div
+                            class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden shrink-0">
+                            <div
+                                class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg flex items-center gap-1">
+                                <i class="ph-bold ph-arrows-clockwise"></i> Auto-Synced</div>
+                            <div class="flex justify-between items-end mb-2 mt-2">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-500 flex items-center gap-2">This Week's
+                                        Target <button onclick="window.openBudgetModal()"
+                                            class="text-slate-300 hover:text-blue-600 transition-colors"
+                                            title="Manual Override"><i class="ph ph-pencil-simple text-sm"></i></button>
+                                    </p>
+                                    <p class="text-3xl font-bold text-slate-800 mt-1" id="display-budget-text">RM 360.00
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs font-medium text-slate-400">Remaining</p>
+                                    <p class="text-lg font-bold text-emerald-600" id="remaining-amount">RM 360.00</p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-3 mt-4 overflow-hidden">
+                                <div id="budget-bar" class="bg-emerald-500 h-3 rounded-full transition-all duration-500"
+                                    style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between mt-3">
+                                <p class="text-xs text-slate-500" id="budget-status-text">Connecting...</p>
+                                <p class="text-xs font-bold text-slate-800" id="spent-amount">RM 0.00 Spent</p>
+                            </div>
+                        </div>
+
+                        <!-- Add Form -->
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 shrink-0">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Add Expense</h3>
+                            <form id="expense-form" onsubmit="window.addTrackerExpense(event)" class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Description</label>
+                                    <input type="text" id="exp-desc" required placeholder="e.g. Lunch mixed rice"
+                                        class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-slate-50">
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (RM)</label>
+                                        <input type="number" step="0.01" id="exp-amount" required placeholder="0.00"
+                                            class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-slate-50">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+                                        <select id="exp-category"
+                                            class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-slate-50">
+                                            <option value="Meal">Meal</option>
+                                            <option value="Transport">Transport</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Date & Time (Optional)</label>
+                                    <input type="datetime-local" id="exp-datetime"
+                                        class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-slate-50">
+                                </div>
+                                <button type="submit"
+                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2 text-sm mt-2">
+                                    <i class="ph ph-plus-circle text-lg"></i>
+                                    Add to This Week
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- History Section -->
+                        <div
+                            class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-1 min-h-[200px]">
+                            <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2 shrink-0"><i
+                                    class="ph-fill ph-clock-counter-clockwise text-blue-500"></i> Past Weeks History
+                            </h3>
+                            <div id="history-list" class="space-y-2 overflow-y-auto custom-scrollbar pr-2 flex-1">
+                                <!-- JS injected -->
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Right Column: Transactions (Flexible Height) -->
+                    <div
+                        class="bg-white rounded-2xl shadow-sm border border-slate-200 lg:col-span-2 flex flex-col h-[calc(100vh-16rem)] min-h-[500px]">
+                        <div class="p-6 border-b border-slate-100 flex justify-between items-center shrink-0">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800">This Week's Transactions</h3>
+                                <p class="text-xs text-slate-500" id="current-week-label"></p>
+                            </div>
+                            <button onclick="window.clearCurrentWeekExpenses()"
+                                class="text-xs text-red-500 hover:text-red-700 font-medium bg-red-50 hover:bg-red-100 transition-colors px-3 py-1.5 rounded-lg flex items-center gap-1"><i
+                                    class="ph ph-trash"></i> Clear This Week</button>
+                        </div>
+                        <div class="p-6 overflow-y-auto custom-scrollbar flex-1" id="expense-list-container">
+                            <div id="empty-state"
+                                class="h-full flex flex-col items-center justify-center text-slate-400">
+                                <i class="ph ph-receipt text-4xl mb-2 opacity-50"></i>
+                                <p class="text-sm">No expenses logged for this week yet.</p>
+                            </div>
+                            <ul id="expense-list" class="space-y-3 hidden"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 4: SHEETS ================= -->
+            <div id="view-sheets" class="hidden animate-fade-in max-w-5xl mx-auto px-4 md:px-8">
+                <header class="mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800">Master Excel Portal</h2>
+                    <p class="text-sm text-slate-500">Quick access to the specific tabs in your Google Sheet.</p>
+                </header>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <a href="https://docs.google.com/spreadsheets/d/1z1pgcPm5q0_lQOBEZcIv2rG_6lT0TuA4cUA74pNJNZ4/edit#gid=832473283"
+                        class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col items-start cursor-pointer">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i class="ph ph-chart-line-up text-2xl"></i></div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
+                            Investment Timeline</h3>
+                        <p class="text-xs text-slate-500 flex-1">Access your long-term investment strategy, MoMoo
+                            tracking, and principal goal calculations.</p>
+                        <div class="mt-4 flex items-center text-sm font-semibold text-blue-600 gap-1">Open Sheet <i
+                                class="ph ph-arrow-up-right"></i></div>
+                    </a>
+
+                    <a href="https://docs.google.com/spreadsheets/d/1z1pgcPm5q0_lQOBEZcIv2rG_6lT0TuA4cUA74pNJNZ4/edit#gid=2081294180"
+                        class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col items-start cursor-pointer">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i class="ph ph-bank text-2xl"></i></div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
+                            Fixed Deposits (FD)</h3>
+                        <p class="text-xs text-slate-500 flex-1">Check your locked traditional FD placements, maturity
+                            dates, and locked-in interest rates.</p>
+                        <div class="mt-4 flex items-center text-sm font-semibold text-blue-600 gap-1">Open Sheet <i
+                                class="ph ph-arrow-up-right"></i></div>
+                    </a>
+
+                    <a href="https://docs.google.com/spreadsheets/d/1z1pgcPm5q0_lQOBEZcIv2rG_6lT0TuA4cUA74pNJNZ4/edit#gid=675121390"
+                        class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col items-start cursor-pointer">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i class="ph ph-calendar-check text-2xl"></i></div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
+                            2026 Expenses Master</h3>
+                        <p class="text-xs text-slate-500 flex-1">Dive into the complete 2026 macro-level expense
+                            tracking tab and monthly summaries.</p>
+                        <div class="mt-4 flex items-center text-sm font-semibold text-blue-600 gap-1">Open Sheet <i
+                                class="ph ph-arrow-up-right"></i></div>
+                    </a>
+
+                    <a href="https://docs.google.com/spreadsheets/d/1z1pgcPm5q0_lQOBEZcIv2rG_6lT0TuA4cUA74pNJNZ4/edit#gid=1432654235"
+                        class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col items-start cursor-pointer">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i class="ph ph-calculator text-2xl"></i></div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
+                            Saving Calculator Tab</h3>
+                        <p class="text-xs text-slate-500 flex-1">View the raw excel formulas and detailed restructuring
+                            plan for your savings.</p>
+                        <div class="mt-4 flex items-center text-sm font-semibold text-blue-600 gap-1">Open Sheet <i
+                                class="ph ph-arrow-up-right"></i></div>
+                    </a>
+
+                    <a href="https://docs.google.com/spreadsheets/d/1z1pgcPm5q0_lQOBEZcIv2rG_6lT0TuA4cUA74pNJNZ4/edit#gid=253295433"
+                        class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all flex flex-col items-start cursor-pointer">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i class="ph ph-clock-counter-clockwise text-2xl"></i></div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
+                            Payment Timeline</h3>
+                        <p class="text-xs text-slate-500 flex-1">Check your daily meals budget, home cooking schedule,
+                            and timeline for upcoming bills.</p>
+                        <div class="mt-4 flex items-center text-sm font-semibold text-blue-600 gap-1">Open Sheet <i
+                                class="ph ph-arrow-up-right"></i></div>
+                    </a>
+                </div>
+
+            </div>
+
+            <!-- ================= VIEW 5: SOUP MASTER ================= -->
+            <div id="view-soup" class="hidden animate-fade-in max-w-7xl mx-auto px-4 md:px-8">
+                <header
+                    class="mb-6 border-b border-slate-200 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                            <i class="ph-fill ph-bowl-steam text-orange-500"></i> Susan's Herbal Soup Master
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-1">Wide Matrix Management. Click any green header to view Encyclopedia &amp; Image.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                        <button onclick="window.openAddHerbModal()"
+                            class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm flex items-center gap-1"><i
+                                class="ph-bold ph-plus"></i> Add Herb</button>
+                        <button onclick="window.openAddSoupModal()"
+                            class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg shadow-sm flex items-center gap-1"><i
+                                class="ph-bold ph-plus"></i> Add Soup</button>
+                    </div>
+                </header>
+
+                <!-- Scrollable Table Container -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full mb-8">
+                    <div class="overflow-x-auto custom-scrollbar w-full">
+                        <table class="w-full text-left border-collapse text-xs md:text-sm min-w-[2800px]">
+                            <thead>
+                                <tr id="soup-header-row-names" class="bg-slate-100 border-b border-slate-200"></tr>
+                                <tr id="soup-header-row-stock"
+                                    class="bg-amber-50/50 border-b border-slate-200 font-semibold"></tr>
+                                <tr id="soup-header-row-price"
+                                    class="bg-blue-50/40 border-b border-slate-200 font-semibold"></tr>
+                            </thead>
+                            <tbody id="soup-matrix-body" class="divide-y divide-slate-100 font-medium"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- UI Message Modal -->
+    <div id="message-modal"
+        class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 transition-opacity">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6 transform scale-95 transition-transform"
+            id="message-modal-content">
+            <h3 class="text-lg font-bold text-slate-800 mb-2" id="message-modal-title">Notice</h3>
+            <p class="text-sm text-slate-600 mb-6" id="message-modal-text">Message goes here.</p>
+            <button onclick="window.closeModal()"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors">Got
+                it</button>
+        </div>
+    </div>
+
+    <!-- Budget Edit Modal (Tracker) -->
+    <div id="budget-modal"
+        class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 transition-opacity">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6 transform scale-95 transition-transform"
+            id="budget-modal-content">
+            <h3 class="text-lg font-bold text-slate-800 mb-1">Manual Override</h3>
+            <p class="text-xs text-slate-500 mb-4">Note: Your budget is auto-synced from your Calculator plan.</p>
+            <div class="mb-6">
+                <label class="block text-xs font-semibold text-slate-600 mb-1">New Target Amount (RM)</label>
+                <input type="number" step="0.01" id="new-budget-input"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="window.closeBudgetModal()"
+                    class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 rounded-lg transition-colors">Cancel</button>
+                <button onclick="window.saveBudget()"
+                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors">Override</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Expense Modal -->
+    <div id="edit-expense-modal"
+        class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 transition-opacity">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6 transform scale-95 transition-transform"
+            id="edit-expense-modal-content">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">Edit Expense</h3>
+            <input type="hidden" id="edit-exp-id">
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Description</label>
+                    <input type="text" id="edit-exp-desc" required
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (RM)</label>
+                        <input type="number" step="0.01" id="edit-exp-amount" required
+                            class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+                        <select id="edit-exp-category"
+                            class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            <option value="Meal">Meal</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Date & Time</label>
+                    <input type="datetime-local" id="edit-exp-datetime" required
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="window.closeEditExpenseModal()"
+                    class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 rounded-lg transition-colors">Cancel</button>
+                <button onclick="window.saveEditedExpense()"
+                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Herb Encyclopedia Detail Modal -->
+    <div id="herb-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden flex flex-col max-h-[85vh]"
+            id="herb-modal-content">
+            <div class="p-6 bg-gradient-to-r from-orange-500 to-amber-600 text-white flex justify-between items-start">
+                <div>
+                    <span id="herb-modal-prop"
+                        class="text-[10px] uppercase font-bold tracking-wider bg-white/20 px-2 py-0.5 rounded-full"></span>
+                    <h3 class="text-2xl font-bold mt-1" id="herb-modal-title"></h3>
+                </div>
+                <button onclick="window.closeHerbModal()" class="text-white text-2xl"><i
+                        class="ph ph-x-circle"></i></button>
+            </div>
+            <div class="px-6 pt-4 shrink-0 flex justify-center bg-slate-50/50 border-b border-slate-100">
+                <img id="herb-modal-image" src="" alt="Herb Photo"
+                    class="h-40 object-cover rounded-xl shadow-inner mb-4 border border-slate-200 hidden">
+                <div id="herb-modal-no-image"
+                    class="h-20 flex items-center justify-center text-xs text-slate-400 italic">No image available</div>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-4 text-sm text-slate-600 flex-1">
+                <div>
+                    <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1"><i
+                            class="ph-fill ph-sparkles text-amber-500"></i> Main Effects</h4>
+                    <p id="herb-modal-effects" class="bg-slate-50 p-3 rounded-xl border border-slate-100"></p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1"><i
+                            class="ph-fill ph-warning-octagon text-red-500"></i> Pairings / Contraindications</h4>
+                    <p id="herb-modal-taboo" class="bg-red-50/50 p-3 rounded-xl border border-red-100 text-red-900"></p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1"><i
+                                class="ph ph-eye text-blue-500"></i> Appearance</h4>
+                        <p id="herb-modal-look" class="text-xs"></p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1"><i
+                                class="ph ph-wind text-purple-500"></i> Scent & Taste</h4>
+                        <p id="herb-modal-smell" class="text-xs"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DYNAMIC FORM MODAL: ADD NEW HERB (INGREDIENT) -->
+    <div id="add-herb-modal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl space-y-4">
+            <h3 class="text-lg font-bold text-slate-800 border-b pb-2">Add New Herb (Ingredient)</h3>
+            <div class="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">Herb Name</label>
+                    <input type="text" id="new-herb-name" class="w-full border p-2 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Unique ID (e.g. wendang)</label>
+                    <input type="text" id="new-herb-id" class="w-full border p-2 rounded-lg" placeholder="Must be unique">
+                </div>
+            </div>
+            <div class="text-xs">
+                <label class="block font-semibold mb-1">Property (e.g. warm / neutral / cool)</label>
+                <input type="text" id="new-herb-prop" class="w-full border p-2 rounded-lg">
+            </div>
+            <div class="text-xs">
+                <label class="block font-semibold mb-1">Main Effects</label>
+                <input type="text" id="new-herb-effects" class="w-full border p-2 rounded-lg">
+            </div>
+            <div class="text-xs">
+                <label class="block font-semibold mb-1">Pairings / Contraindications</label>
+                <input type="text" id="new-herb-taboo" class="w-full border p-2 rounded-lg">
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">Appearance</label>
+                    <input type="text" id="new-herb-look" class="w-full border p-2 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Scent & Taste</label>
+                    <input type="text" id="new-herb-smell" class="w-full border p-2 rounded-lg">
+                </div>
+            </div>
+            <div class="text-xs">
+                <label class="block font-semibold mb-1">Herb Image URL (optional)</label>
+                <input type="url" id="new-herb-img" class="w-full border p-2 rounded-lg"
+                    placeholder="https://example.com/photo.jpg">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="window.closeAddHerbModal()"
+                    class="flex-1 bg-slate-100 py-2 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="window.submitNewHerb()"
+                    class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-xs font-semibold">Add to Matrix</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DYNAMIC FORM MODAL: ADD NEW SOUP RECIPE -->
+    <div id="add-soup-modal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 shadow-xl flex flex-col max-h-[80vh]">
+            <h3 class="text-lg font-bold text-slate-800 border-b pb-2 shrink-0">Add New Soup Recipe</h3>
+            <div class="space-y-3 py-3 text-xs shrink-0">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold mb-1">Soup Name</label>
+                        <input type="text" id="new-soup-name" class="w-full border p-2 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">Category / Function</label>
+                        <input type="text" id="new-soup-cat" class="w-full border p-2 rounded-lg">
+                    </div>
+                </div>
+                <label class="block font-bold text-slate-700 mt-2">Select required herb ingredients:</label>
+            </div>
+            <div id="soup-ingredients-checklist"
+                class="flex-1 overflow-y-auto border rounded-xl p-3 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs bg-slate-50 custom-scrollbar">
+            </div>
+            <div class="flex gap-2 pt-4 shrink-0">
+                <button onclick="window.closeAddSoupModal()"
+                    class="flex-1 bg-slate-100 py-2 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="window.submitNewSoup()"
+                    class="flex-1 bg-orange-600 text-white py-2 rounded-lg text-xs font-semibold">Create Soup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT APP LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const isCanvas = typeof __firebase_config !== 'undefined';
+
+        // =========================================================================================
+        // FIREBASE KEYS
+        // =========================================================================================
+        const myFirebaseConfig = {
+            apiKey: "AIzaSyD3Om_rqVcdF-o1vHCSrtkEq8iYC4IbvhQ",
+            authDomain: "financial-tracker-8a6d5.firebaseapp.com",
+            projectId: "financial-tracker-8a6d5",
+            storageBucket: "financial-tracker-8a6d5.firebasestorage.app",
+            messagingSenderId: "713991619767",
+            appId: "1:713991619767:web:4c960ac1f5022d50d5b932"
+        };
+
+        const firebaseConfig = isCanvas ? JSON.parse(__firebase_config) : myFirebaseConfig;
+        const appId = 'wealth-portal-123';
+        const formatter = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR', maximumFractionDigits: 0 });
+        const trackerFormatter = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' });
+
+        // --- GLOBAL DATA & STATE ---
+        let app, auth, db, currentUser;
+        let unsubscribePlanner, unsubscribeSnapshot, unsubscribeBudget, unsubscribeSoup;
+        window.isLoadingData = false;
+
+        // Calculator Data
+        let income = 6700;
+        let categories = [{ name: "Expenses", pct: 50 }, { name: "Savings", pct: 30 }, { name: "Investment", pct: 10 }, { name: "Insurance", pct: 10 }];
+        let fixedExpenses = [{ name: "House Rental", amount: 750 }, { name: "Car Loan", amount: 396 }, { name: "Parents Med Card", amount: 320 }];
+        let chartInstance = null;
+        const WD_DAYS = 20, WE_DAYS = 8;
+        const chartColors = ['#3b82f6', '#10b981', '#a855f7', '#f97316', '#ec4899', '#06b6d4', '#eab308'];
+
+        // Tracker Data
+        let trackerExpenses = [];
+        let weeklyBudget = 360.00;
+
+        // =========================================================================================
+        // SOUP MASTER STATE
+        // =========================================================================================
+        let runtimeHerbs = [];
+        let runtimeRecipes = [];
+        let soupStockState = {};
+        let soupPriceState = {};
+
+        // Default seed arrays used when cloud has no data yet
+        const initialHerbsSeed = [
+            { id: "huashan", name: "淮山", prop: "平性", effects: "健脾胃；益肺肾；生津", taboo: "四神汤原配；感冒者少用；严重便秘者少用。", look: "白色或米黄色薄片，边缘带自然黄皮。", smell: "无浓烈药味，嚼着粉粉的、微甜。", img: "" },
+            { id: "fuling", name: "茯苓", prop: "平性", effects: "利水渗湿；健脾宁心", taboo: "百合赤小豆百搭；虚寒精滑者少用。", look: "白色小方块（像小豆腐），质地粗糙。", smell: "几乎无气味，嚼着像不溶化的粉质石子。", img: "" },
+            { id: "lianzi", name: "莲子", prop: "平性", effects: "补脾止泻；养心安神", taboo: "配百合润肺；腹胀者不宜；大便干结者不宜。", look: "圆形米黄色颗粒，中间有去芯留留下起的空洞。", smell: "淡淡豆科清香，煮熟后口感绵软微甜。", img: "" },
+            { id: "qianshi", name: "芡实", prop: "平性", effects: "益肾固精；健脾除湿", taboo: "四神汤标配；产后妇女不宜多食；婴儿不宜多食。", look: "像碎石子，一面白色粉质，一面红褐色皮。", smell: "气味微弱，咬起来非常硬、质地粉粉的。", img: "" },
+            { id: "danggui", name: "当归", prop: "温性", effects: "补血活血；调经止痛", taboo: "配北芪大补气血；孕妇禁用；经期禁用；拉肚子禁用。", look: "黄棕色外皮，内肉黄白色，有棕色圈纹。", smell: "气味极其浓烈霸道，尝起来苦中带辣回甘。", img: "" },
+            { id: "dangsen", name: "党参", prop: "平性", effects: "补中益气；健脾益肺", taboo: "配白术茯苓；实热发高烧不用；口苦燥热时不用。", look: "黄棕色小短段，表面有皱纹，切面有黄色心。", smell: "浓郁干草红糖香，质地柔韧，嚼起来很甜。", img: "" },
+            { id: "shudi", name: "熟地", prop: "微温", effects: "补血滋阴；益精填髓", taboo: "八真汤、黑豆汤灵魂；脾胃虚弱易胀气者少用。", look: "全身上下乌黑发亮，厚块或厚片，质地黏。", smell: "焦糖混合药材的甜香，摸着粘手，味道甜苦。", img: "" },
+            { id: "chuanxiong", name: "川芎", prop: "温性", effects: "活血行气；祛风止痛", taboo: "专治头痛；阴虚火旺者禁用；月经过多者禁用。", look: "切片不规则，长得像蝴蝶翅膀，黄褐色。", smell: "气味浓郁辛香刺鼻，味道苦辣，舌头微麻。", img: "" },
+            { id: "baizhu", name: "白术", prop: "温性", effects: "健脾益气；燥湿利水", taboo: "配党参茯苓；体内严重缺水者不宜；大便干结者不宜。", look: "灰黄色不规则厚片，断面有棕黄色“朱砂点”。", smell: "气味清香特殊，味道微苦带甜，嚼着黏牙。", img: "" },
+            { id: "baishao", name: "白芍", prop: "微寒", effects: "养血调经；柔肝止痛", taboo: "配当归补血；虚寒性肚子痛者少用；拉稀者少用。", look: "非常整齐的圆形薄片，粉白色，质地极硬。", smell: "气味微弱带轻微酸气，味道苦酸。", img: "" },
+            { id: "gancao", name: "甘草", prop: "平性", effects: "补脾益气；调和诸药", taboo: "药界和事佬；调和苦味；水肿胀满者不宜多用。", look: "圆形切片，红棕色外皮，内肉黄白带放射纹。", smell: "气味弱，但尝起来极其甜且持久。", img: "" },
+            { id: "baihe", name: "百合", prop: "微寒", effects: "养阴润肺；清心安神", taboo: "配莲子雪耳；风寒咳嗽者不宜；拉肚子者不宜。", look: "一瓣瓣像指甲盖的肉质鳞片，乳白或微黄色。", smell: "气味很淡，尝起来味道微苦。", img: "" },
+            { id: "longyan", name: "龙眼肉", prop: "温性", effects: "补益心脾；养血安神", taboo: "配红枣当归；内火旺者不宜；痰湿重者不宜；孕早期不宜。", look: "皱巴巴 of 黄褐色/棕褐色果肉，质地柔软。", smell: "浓郁果香与熏制香气，入口非常甜。", img: "" },
+            { id: "duzhong", name: "杜仲", prop: "温性", effects: "补肝肾；强筋骨", taboo: "专治腰酸；体内易上火者慎用。", look: "炭黑色长条，折断时有密麻银白弹性橡胶丝", smell: "气味微弱，尝起来味道微苦。", img: "" },
+            { id: "bajitian", name: "巴戟天", prop: "温性", effects: "补肾阳；强筋骨", taboo: "配杜仲治腰痛；尿黄者忌服；上火者忌服。", look: "灰紫色粗藤条状，有深横纹，中间木心已抽空。", smell: "气味微弱，味道甘甜中带点微苦。", img: "" },
+            { id: "niuxi", name: "牛膝", prop: "平性", effects: "补肝肾；带药力下行", taboo: "治关节痛；孕妇绝对禁用；月经过多者绝对禁用。", look: "细长条黄褐色圆柱段，表面有细纵皱纹。", smell: "淡淡特殊气味，尝起来微甜而稍带苦涩。", img: "" },
+            { id: "heidou", name: "黑豆", prop: "平性", effects: "活血解毒；消水肿；乌发肾水", taboo: "配何首乌；一定要炒熟煮烂，否则严重胀气。", look: "黑色皮，里面肉质呈淡绿色（青仁）或黄白色。", smell: "生有豆腥味，炒熟后有浓郁豆香味。", img: "" },
+            { id: "heshouwu", name: "何首乌", prop: "微温", effects: "补肝肾；益精血乌发", taboo: "必须用“制首乌”；大便拉稀者不宜；湿气重者不宜。", look: "不规则深红棕色或黑色厚片，质地极硬。", smell: "气味微弱，尝起来苦涩，过后有回甘。", img: "" },
+            { id: "shasen", name: "沙参", prop: "微寒", effects: "养阴清肺；生津止渴", taboo: "配玉竹治干咳；风寒流清涕感冒者忌用。", look: "黄白色圆柱段，质地轻脆，断面多孔像海绵。", smell: "气味很淡，嚼起来味道微甘。", img: "" },
+            { id: "maidong", name: "麦冬", prop: "微寒", effects: "润肺清心；解烦安神", taboo: "配西洋参熬夜用；吃冰易拉肚子者忌用；多痰者忌用。", look: "长得像饱满的小纺锤（两头尖中间胖）。", smell: "气味清香，味道甜微苦，嚼着黏牙。", img: "" },
+            { id: "xueer", name: "雪耳", prop: "平性", effects: "滋阴润肺；养胃生津", taboo: "甜咸皆宜；刚开始感冒咳嗽时不要吃。", look: "干燥时是黄白色硬菊花状，泡水后变大软糯。", smell: "淡淡菌类清香，无怪味，口感软糯。", img: "" },
+            { id: "chixiaodou", name: "赤小豆", prop: "平性", effects: "利水消肿；强力祛湿", taboo: "配扁豆薏米；尿频者少喝；身体极度缺水者少喝。", look: "比红豆细长，暗红紫色，中间有白线豆脐。", smell: "纯粹的清淡豆谷香。", img: "" },
+            { id: "biandou", name: "扁豆", prop: "微温", effects: "健脾化湿；消暑解毒", taboo: "配赤小豆；体内无湿热者少用。", look: "扁扁的椭圆形，淡黄白色，边缘有白眉状突起。", smell: "气味微弱，嚼起来有淡淡的豆生味。", img: "" },
+            { id: "yimi", name: "生熟薏米", prop: "生寒/熟温", effects: "利水祛湿；健脾胃", taboo: "建议生熟各一半；孕妇不宜；经常便秘者不宜。", look: "生的白色带深沟；熟的像爆米花发黄松脆。", smell: "生的带谷腥味；熟的有一股焦香炒米味。", img: "" },
+            { id: "chenpi", name: "陈皮", prop: "温性", effects: "理气健脾；燥湿化痰", taboo: "煲肉汤去腥防胀气；干咳无痰者少放；火旺者少放。", look: "三瓣相连橘子皮，外皮红黑褐色，内面黄白。", smell: "香气极其醇厚陈香，味道微苦辛辣。", img: "" },
+            { id: "canxu", name: "参须", prop: "微凉", effects: "益气生津；清热不上火", taboo: "适合大马天气；适合熬夜虚热；发高烧时别喝。", look: "乱糟糟的黄白色细树根状（人参细支根）。", smell: "典型的人参清香，味道苦单回甘明显。", img: "" },
+            { id: "hongzao", name: "红枣 / 黑枣", prop: "温性", effects: "补中益气；养血安神", taboo: "煲汤记得去核防燥热；牙痛者少吃；糖尿病者少吃。", look: "红色或黑色（黑枣），表面有不规则深皱纹。", smell: "浓郁枣香甜气，肉质松软，味道非常甜。", img: "" },
+            { id: "gouqi", name: "枸杞", prop: "平性", effects: "滋补肝肾；益精明目", taboo: "熄火前5分钟下；感冒发炎时别吃；拉肚子时别吃。", look: "暗红色纺锤形小颗粒，顶端有白点果柄痕。", smell: "天然果甜味，尝着甜中带有一点点天然微酸。", img: "" },
+            { id: "yuzhu", name: "玉竹", prop: "微寒", effects: "养阴润燥；生津止渴", taboo: "大马润燥必加；大便稀烂者少用；痰多者少用。", look: "长条薄片，长得像干瘪发黄的竹片，微透明。", smell: "气味淡，味道甘甜，嚼着有轻微黏稠胶质感。", img: "" },
+            { id: "mizao", name: "蜜枣", prop: "平性", effects: "补脾润肺；强力提鲜", taboo: "广式老火汤灵魂；糖尿病者少放；牙痛者少放。", look: "比红枣大很多，表面包裹一层白色糖霜纹理。", smell: "纯粹的浓郁糖果香，口感像软糖，极甜。", img: "" },
+            { id: "beiqi", name: "北芪", prop: "微温", effects: "补气固表；补气之王", taboo: "配当归党参；高血压禁用；容易暴躁上火者禁用；感冒禁用。", look: "长斜薄片，外皮黄，断面中心黄边缘白（面包片）", smell: "淡淡豆腥清香，木质纤维感重，味道微甜。", img: "" },
+            { id: "xiyangsen", name: "西洋参", prop: "凉性", effects: "补气养阴；大补不上火", taboo: "适合熬夜打工人；脾胃虚寒者不宜；寒痰咳嗽者不宜。", look: "圆形或椭圆形精细小薄片，浅黄褐色有环纹。", smell: "香气高雅独特，入口第一口苦，随后强回甘。", img: "" },
+            { id: "luohanguo", name: "罗汉果", prop: "凉性", effects: "清肺利咽；润肠通便", taboo: "煲凉茶清润汤，不需放糖；胃寒拉稀者少喝。", look: "乒乓球状黄褐色脆壳果实，内有海绵状果肉。", smell: "气味清香，煮水极度甜（天然甜素无热量）。", img: "" },
+            { id: "bawanghua", name: "霸王花", prop: "微寒", effects: "清热润肺；止咳化痰", taboo: "大马清肺热；胃寒者少喝；孕妇少喝。", look: "长得像拧在一起的干枯大花瓣，黄褐色。", smell: "淡淡干花清香，煮汤后汤汁会有一点滑溜感。", img: "" },
+            { id: "wuhuaguo", name: "无花果", prop: "平性", effects: "润肺止咳；健脾开胃", taboo: "配霸王花、老黄瓜；老少皆宜。", look: "扁圆形干燥小果实，淡黄或黄褐色，顶端有孔。", smell: "香甜干果味，嚼着有很多小种子，酸酸甜甜。", img: "" },
+            { id: "chuanbei", name: "川贝", prop: "微寒", effects: "清热润肺；顽固干咳", taboo: "价格极贵；配冰糖炖梨；畏寒者禁用；咳白痰者禁用。", look: "长得像白色小珍珠，大瓣抱小瓣（怀中抱月）。", smell: "气味微弱，尝起来味道比较苦。", img: "" },
+            { id: "beishasen", name: "北沙参", prop: "微寒", effects: "养阴清肺；生津止渴", taboo: "滋阴力量比普通沙参更强；感冒咳嗽者忌用。", look: "比南沙参细、硬、重，黄白色，表面较光滑。", smell: "气味很淡，尝起来味道微甜。", img: "" },
+            { id: "tianma", name: "天麻", prop: "平性", effects: "息风止痉；平抑肝阳；祛风通络", taboo: "专治头痛头晕；偏头痛神药；配川芎鱼头；气血两虚者不单用。", look: "半透明琥珀色硬薄片，硬如塑料片，有网纹。", smell: "气味特殊难闻（俗称马尿臭），味微辛苦。", img: "" }
+        ];
+
+        const initialRecipesSeed = [
+            { name: "1. 四神汤", category: "健脾祛湿", matches: ["huashan", "fuling", "lianzi", "qianshi"] },
+            { name: "2. 八珍汤", category: "大补气血", matches: ["fuling", "danggui", "dangsen", "shudi", "chuanxiong", "baizhu", "baishao", "gancao", "hongzao"] },
+            { name: "3. 宁神汤 (六味)", category: "清心安神", matches: ["huashan", "lianzi", "qianshi", "baihe", "longyan", "yuzhu"] },
+            { name: "4. 杜仲汤", category: "强筋壮骨", matches: ["duzhong", "bajitian", "niuxi", "heidou", "hongzao"] },
+            { name: "5. 黑豆汤", category: "补肾乌发", matches: ["shudi", "heidou", "heshouwu", "hongzao"] },
+            { name: "6. 玉竹汤", category: "滋阴清热", matches: ["shasen", "maidong", "yuzhu", "mizao"] },
+            { name: "7. 雪耳汤", category: "润肺养颜", matches: ["lianzi", "baihe", "xueer", "hongzao", "gouqi"] },
+            { name: "8. 祛湿汤", category: "祛湿消肿", matches: ["fuling", "chixiaodou", "biandou", "yimi", "chenpi"] },
+            { name: "9. 参须汤", category: "清热补气", matches: ["maidong", "canxu", "hongzao", "yuzhu"] },
+            { name: "10. 十全大补汤", category: "气血双补", matches: ["huashan", "fuling", "danggui", "dangsen", "shudi", "chuanxiong", "baizhu", "baishao", "gancao", "hongzao", "beiqi"] }
+        ];
+
+        // --- INTERNAL TAB NAVIGATION ---
+        window.switchTab = function (tabId) {
+            const tabs = ['home', 'calculator', 'tracker', 'sheets', 'soup'];
+            tabs.forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                const dBtn = document.getElementById(`tab-btn-${t}`);
+                if (dBtn) dBtn.className = "px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 hover:bg-slate-100 transition-colors";
+                const mBtn = document.getElementById(`mob-tab-btn-${t}`);
+                if (mBtn) mBtn.className = "whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 hover:bg-slate-100 transition-colors";
+            });
+
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            const activeDesktop = "px-4 py-2 font-semibold text-sm rounded-lg text-blue-600 bg-blue-50 transition-colors";
+            const activeMobile = "whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-blue-600 bg-blue-50 transition-colors";
+
+            const dBtnActive = document.getElementById(`tab-btn-${tabId}`);
+            if (dBtnActive) dBtnActive.className = activeDesktop;
+            const mBtnActive = document.getElementById(`mob-tab-btn-${tabId}`);
+            if (mBtnActive) mBtnActive.className = activeMobile;
+
+            if (tabId === 'calculator') {
+                if (chartInstance) { chartInstance.resize(); }
+                else { window.fullRender(); }
+            }
+            if (tabId === 'soup') window.renderSoupMatrix();
+        };
+
+        // --- FIREBASE INIT ---
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            const initAuth = async () => {
+                try { await setPersistence(auth, browserLocalPersistence); }
+                catch (error) { console.error("Persistence failed:", error); }
+
+                if (isCanvas) {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); }
+                    else { await signInAnonymously(auth); }
+                }
+            };
+            initAuth();
+
+            onAuthStateChanged(auth, (user) => {
+                // Always hide the loading spinner first — Firebase has checked session
+                document.getElementById('loading-screen').classList.add('hidden');
+                currentUser = user;
+                if (user) {
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+                    loadAllData();
+                } else {
+                    // No stored session — show the login form
+                    document.getElementById('auth-screen').classList.remove('hidden');
+                    document.getElementById('auth-screen').classList.add('flex');
+                    document.getElementById('main-app').classList.add('hidden');
+                    cleanupListeners();
+                }
+            });
+        } catch (e) {
+            console.warn("Firebase offline mode");
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('budget-status-text').innerText = "Running Offline";
+            window.fullRender();
+            window.updateTrackerUI();
+        }
+
+        // --- AUTH LOGIC ---
+        window.authMode = 'login';
+        window.handleAuth = async function (e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const errorEl = document.getElementById('auth-error');
+            errorEl.classList.add('hidden');
+            try {
+                if (window.authMode === 'login') await signInWithEmailAndPassword(auth, email, password);
+                else await createUserWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                errorEl.innerText = error.message;
+                errorEl.classList.remove('hidden');
+            }
+        };
+
+        window.logout = async function () {
+            cleanupListeners();
+            await signOut(auth);
+            location.reload();
+        };
+
+        function cleanupListeners() {
+            if (unsubscribePlanner) unsubscribePlanner();
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
+            if (unsubscribeBudget) unsubscribeBudget();
+            if (unsubscribeSoup) unsubscribeSoup();
+            trackerExpenses = [];
+        }
+
+        function loadAllData() {
+            if (!currentUser || !db) return;
+
+            const plannerRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'planner');
+            unsubscribePlanner = onSnapshot(plannerRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().income !== undefined) {
+                    const data = docSnap.data();
+
+                    const localCategories = JSON.stringify(categories.map(c => ({ ...c, pct: Number(c.pct || 0) })));
+                    const dbCategories = JSON.stringify((data.categories || []).map(c => ({ ...c, pct: Number(c.pct || 0) })));
+                    const localExpenses = JSON.stringify(fixedExpenses.map(e => ({ ...e, amount: Number(e.amount || 0) })));
+                    const dbExpenses = JSON.stringify((data.expenses || []).map(e => ({ ...e, amount: Number(e.amount || 0) })));
+
+                    const isUnchanged =
+                        income === data.income &&
+                        document.getElementById('wd-input').value === (data.wdInput !== undefined ? String(data.wdInput) : document.getElementById('wd-input').value) &&
+                        localCategories === dbCategories &&
+                        localExpenses === dbExpenses;
+
+                    if (isUnchanged) return;
+
+                    const isTyping = document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+                    if (isTyping && window.hasLoadedPlanner) return;
+
+                    window.hasLoadedPlanner = true;
+                    window.isLoadingData = true;
+                    income = data.income;
+                    categories = data.categories || [];
+                    fixedExpenses = data.expenses || [];
+                    if (data.wdInput) document.getElementById('wd-input').value = data.wdInput;
+                    document.getElementById('calc-income').value = income;
+                    window.fullRender();
+                    window.isLoadingData = false;
+                } else {
+                    window.hasLoadedPlanner = true;
+                    window.fullRender();
+                }
+            });
+
+            const budgetRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'budget');
+            unsubscribeBudget = onSnapshot(budgetRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().amount) {
+                    weeklyBudget = parseFloat(docSnap.data().amount);
+                } else {
+                    weeklyBudget = 360.00;
+                }
+                document.getElementById('display-budget-text').innerText = trackerFormatter.format(weeklyBudget);
+                window.updateTrackerUI();
+            });
+
+            const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses');
+            unsubscribeSnapshot = onSnapshot(colRef, (snapshot) => {
+                trackerExpenses = [];
+                snapshot.forEach(doc => { trackerExpenses.push({ id: doc.id, ...doc.data() }); });
+                trackerExpenses.sort((a, b) => b.timestamp - a.timestamp);
+                window.updateTrackerUI();
+            });
+
+            const soupRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'soupSystemData');
+            unsubscribeSoup = onSnapshot(soupRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    runtimeHerbs = data.herbs || initialHerbsSeed;
+                    runtimeRecipes = data.recipes || initialRecipesSeed;
+                    soupStockState = data.stock || {};
+                    soupPriceState = data.prices || {};
+                } else {
+                    runtimeHerbs = initialHerbsSeed;
+                    runtimeRecipes = initialRecipesSeed;
+                    runtimeHerbs.forEach(h => {
+                        soupStockState[h.id] = false;
+                        soupPriceState[h.id] = 10;
+                    });
+                }
+                window.renderSoupMatrix();
+            });
+        }
+
+        // ================= CALCULATOR LOGIC =================
+        function getCategoryColor(index) { return chartColors[index % chartColors.length]; }
+
+        function buildLists() {
+            document.getElementById('cat-container').innerHTML = categories.map((c, i) => `
+                <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 bg-slate-50 p-2 md:p-3 rounded-lg border border-slate-200">
+                    <div class="flex items-center gap-2 flex-1">
+                        <div class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${getCategoryColor(i)}"></div>
+                        <input type="text" value="${c.name}" oninput="window.updateCatName(${i}, this.value)" class="flex-1 min-w-0 text-xs md:text-sm font-medium bg-transparent outline-none placeholder-slate-400" placeholder="Category Name">
+                    </div>
+                    <div class="flex items-center justify-end gap-2">
+                        <div class="flex items-center gap-1 bg-white px-2 py-1 rounded-md border border-slate-300">
+                            <input type="number" id="cat-pct-${i}" value="${c.pct}" oninput="window.updateCatPct(${i}, this.value)" class="w-12 md:w-14 text-right bg-transparent text-xs font-bold outline-none">
+                            <span class="text-[10px] text-slate-500">%</span>
+                        </div>
+                        <div class="flex items-center gap-1 bg-white px-2 py-1 rounded-md border border-slate-300">
+                            <span class="text-[10px] text-slate-500">RM</span>
+                            <input type="number" id="cat-rm-${i}" value="${Math.floor(income * (Number(c.pct || 0) / 100))}" oninput="window.updateCatAmount(${i}, this.value)" class="w-16 md:w-20 text-right bg-transparent text-xs font-bold outline-none">
+                        </div>
+                        <button onclick="window.removeCat(${i})" class="text-slate-300 hover:text-red-500 ml-1"><i class="ph-fill ph-trash text-base"></i></button>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('exp-container').innerHTML = fixedExpenses.map((e, i) => `
+                <div class="flex items-center gap-2 md:gap-3 bg-slate-50 p-2 md:p-3 rounded-lg border border-slate-200">
+                    <i class="ph-fill ph-receipt text-slate-400 text-base shrink-0"></i>
+                    <input type="text" value="${e.name}" oninput="window.updateExpName(${i}, this.value)" class="flex-1 min-w-0 text-xs md:text-sm font-medium bg-transparent outline-none placeholder-slate-400" placeholder="Expense Name">
+                    <div class="flex items-center gap-1 bg-white px-2 py-1 rounded-md border border-slate-300">
+                        <span class="text-[10px] text-slate-500">RM</span>
+                        <input type="number" id="exp-rm-${i}" value="${e.amount}" oninput="window.updateExpAmount(${i}, this.value)" class="w-16 md:w-20 text-right bg-transparent text-xs font-bold outline-none">
+                    </div>
+                    <button onclick="window.removeExp(${i})" class="text-slate-300 hover:text-red-500 ml-1"><i class="ph-fill ph-trash text-base"></i></button>
+                </div>
+            `).join('');
+        }
+
+        window.calculateGrowth = function () {
+            const principal = parseFloat(document.getElementById('grow-principal').value) || 0;
+            const monthly = parseFloat(document.getElementById('grow-monthly').value) || 0;
+            const rate = parseFloat(document.getElementById('grow-rate').value) || 0;
+            const years = parseFloat(document.getElementById('grow-years').value) || 0;
+
+            const monthlyRate = rate / 100 / 12;
+            const months = years * 12;
+
+            let futureValue = principal * Math.pow(1 + monthlyRate, months);
+            if (monthlyRate > 0) {
+                futureValue += monthly * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+            } else {
+                futureValue += monthly * months;
+            }
+
+            document.getElementById('calc-future-value').innerText = 'Future: ' + formatter.format(Math.floor(futureValue));
+        };
+
+        window.calculateFD = function () {
+            const principal = parseFloat(document.getElementById('fd-principal').value) || 0;
+            const target = parseFloat(document.getElementById('fd-target').value) || 0;
+            const rate = parseFloat(document.getElementById('fd-rate').value) || 0;
+            const inflation = parseFloat(document.getElementById('fd-inflation').value) || 0;
+
+            // Monthly interest = Annual interest / 12 (simulates 12 rolling FDs)
+            const monthlyGross = (principal * (rate / 100)) / 12;
+
+            // Real Return = Rate - Inflation
+            const realRate = rate - inflation;
+            const monthlyReal = (principal * (realRate / 100)) / 12;
+
+            // Required Principal for Target
+            let neededGross = 0;
+            if (rate > 0) neededGross = (target * 12) / (rate / 100);
+
+            let neededReal = 0;
+            if (realRate > 0) neededReal = (target * 12) / (realRate / 100);
+
+            document.getElementById('fd-monthly-gross').innerText = formatter.format(Math.floor(monthlyGross));
+            document.getElementById('fd-monthly-real').innerText = formatter.format(Math.floor(monthlyReal));
+
+            document.getElementById('fd-needed-gross').innerText = formatter.format(Math.floor(neededGross));
+
+            const realNeededEl = document.getElementById('fd-needed-real');
+            if (realRate > 0) {
+                realNeededEl.innerText = formatter.format(Math.floor(neededReal));
+                realNeededEl.classList.replace('text-red-600', 'text-slate-800');
+            } else {
+                realNeededEl.innerText = "N/A (Inflation ≥ Rate)";
+                realNeededEl.classList.replace('text-slate-800', 'text-red-600');
+            }
+        };
+
+        window.calculateAndUpdateUI = function () {
+            income = parseFloat(document.getElementById('calc-income').value) || 0;
+
+            categories.forEach((c, i) => {
+                const pctInput = document.getElementById(`cat-pct-${i}`);
+                const rmInput = document.getElementById(`cat-rm-${i}`);
+
+                if (pctInput && document.activeElement !== pctInput) {
+                    pctInput.value = c.pct;
+                }
+                if (rmInput && document.activeElement !== rmInput) {
+                    rmInput.value = Math.floor(income * (Number(c.pct || 0) / 100));
+                }
+            });
+
+            const catPctSum = categories.reduce((sum, c) => sum + Number(c.pct || 0), 0);
+            const expSum = fixedExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+            const mainExpPct = categories.length > 0 ? Number(categories[0].pct || 0) : 0;
+            const mainExpTotal = income * (mainExpPct / 100);
+            const remaining = mainExpTotal - expSum;
+
+            document.getElementById('total-exp-rm').innerText = 'RM ' + Math.floor(expSum);
+            document.getElementById('rem-rm').innerText = 'RM ' + Math.floor(remaining);
+            if (categories.length > 0) {
+                document.getElementById('rem-title').innerText = `Remaining Buffer (from ${categories[0].name})`;
+            }
+
+            const calcWeeklyBadge = document.getElementById('calc-weekly-budget');
+            if (calcWeeklyBadge) {
+                calcWeeklyBadge.innerText = 'Weekly: RM ' + Math.floor(remaining / 4);
+            }
+
+            const totalPctBadge = document.getElementById('total-pct-badge');
+            document.getElementById('total-pct').innerText = Math.round(catPctSum * 10) / 10;
+            if (catPctSum > 100) totalPctBadge.classList.replace('bg-blue-100', 'bg-red-100'), totalPctBadge.classList.replace('text-blue-700', 'text-red-700');
+            else totalPctBadge.classList.replace('bg-red-100', 'bg-blue-100'), totalPctBadge.classList.replace('text-red-700', 'text-blue-700');
+
+            const wdVal = parseFloat(document.getElementById('wd-input').value) || 0;
+            const weVal = (remaining - (wdVal * WD_DAYS)) / WE_DAYS;
+            document.getElementById('we-input').value = Math.max(0, Math.floor(weVal));
+
+            if (!window.isLoadingData && currentUser && db) {
+                const plannerRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'planner');
+                setDoc(plannerRef, { income: income, wdInput: document.getElementById('wd-input').value, categories: categories, expenses: fixedExpenses }, { merge: true });
+
+                const budgetRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'budget');
+                setDoc(budgetRef, { amount: Math.max(0, remaining / 4) }, { merge: true });
+            }
+
+            window.updateChart(remaining);
+            window.calculateGrowth();
+            window.calculateFD();
+        };
+
+        window.fullRender = function () {
+            buildLists();
+            window.calculateAndUpdateUI();
+        };
+
+        window.addCat = () => { categories.push({ name: "New Category", pct: 0 }); window.fullRender(); };
+        window.removeCat = (i) => { categories.splice(i, 1); window.fullRender(); };
+        window.updateCatName = (i, val) => { categories[i].name = val; window.calculateAndUpdateUI(); };
+
+        window.updateCatPct = (i, val) => {
+            categories[i].pct = val === '' ? '' : Number(val);
+            window.calculateAndUpdateUI();
+        };
+        window.updateCatAmount = (i, val) => {
+            const amt = val === '' ? 0 : Number(val);
+            categories[i].pct = income > 0 ? Number(((amt / income) * 100).toFixed(1)) : 0;
+            window.calculateAndUpdateUI();
+        };
+
+        window.addExp = () => { fixedExpenses.push({ name: "", amount: 0 }); window.fullRender(); };
+        window.removeExp = (i) => { fixedExpenses.splice(i, 1); window.fullRender(); };
+        window.updateExpName = (i, val) => { fixedExpenses[i].name = val; window.calculateAndUpdateUI(); };
+
+        window.updateExpAmount = (i, val) => {
+            fixedExpenses[i].amount = val === '' ? '' : Number(val);
+            window.calculateAndUpdateUI();
+        };
+
+        window.updateChart = function (remainingBuffer) {
+            const ctx = document.getElementById('budgetChart').getContext('2d');
+            const labels = [], data = [], bgColors = [];
+
+            fixedExpenses.forEach(e => { labels.push(e.name); data.push(Number(e.amount || 0)); bgColors.push('#cbd5e1'); });
+            if (categories.length > 0) { labels.push(`Remaining Buffer (${categories[0].name})`); data.push(Math.max(0, remainingBuffer)); bgColors.push(getCategoryColor(0)); }
+            for (let i = 1; i < categories.length; i++) { labels.push(categories[i].name); data.push(income * (Number(categories[i].pct || 0) / 100)); bgColors.push(getCategoryColor(i)); }
+
+            if (chartInstance) chartInstance.destroy();
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: labels, datasets: [{ data: data, backgroundColor: bgColors, borderWidth: 2, borderColor: '#ffffff' }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15, font: { size: 10 } } } } }
+            });
+        };
+
+        // ================= TRACKER LOGIC (WEEKLY AUTO REFRESH + ARCHIVE) =================
+
+        // Helper: Returns the "YYYY-MM-DD" key representing the Monday of the given timestamp
+        function getWeekKey(timestamp) {
+            const d = new Date(timestamp);
+            const day = d.getDay() || 7; // Convert Sunday(0) to 7
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() - day + 1); // Set to Monday
+            return d.toISOString().split('T')[0];
+        }
+
+        // Helper: Formats "YYYY-MM-DD" into a readable "Jun 15, 2026" string
+        function formatWeekDisplay(dateStr) {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        window.addTrackerExpense = async function (e) {
+            e.preventDefault();
+            const desc = document.getElementById('exp-desc').value;
+            const amount = parseFloat(document.getElementById('exp-amount').value);
+            const category = document.getElementById('exp-category').value;
+            if (!desc || isNaN(amount) || amount <= 0) return;
+
+            const expenseData = {
+                date: new Date().toLocaleDateString('en-MY', { weekday: 'short', month: 'short', day: 'numeric' }),
+                desc, amount, category,
+                timestamp: Date.now()
+            };
+
+            if (currentUser && db) {
+                try {
+                    await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses'), expenseData);
+                    document.getElementById('expense-form').reset();
+                } catch (error) { window.showModal("Error", "Could not save expense."); }
+            } else {
+                expenseData.id = Date.now().toString();
+                trackerExpenses.unshift(expenseData);
+                document.getElementById('expense-form').reset();
+                window.updateTrackerUI();
+            }
+        };
+
+        // Safely clear ONLY the current week's expenses so historical data is preserved
+        window.clearCurrentWeekExpenses = async function () {
+            const currentWeekKey = getWeekKey(Date.now());
+            const toDelete = trackerExpenses.filter(exp => getWeekKey(exp.timestamp) === currentWeekKey);
+
+            if (currentUser && db) {
+                if (toDelete.length === 0) return;
+                try {
+                    const deletePromises = toDelete.map(exp => deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses', exp.id)));
+                    await Promise.all(deletePromises);
+                } catch (error) { window.showModal("Error", "Could not clear current week."); }
+            } else {
+                trackerExpenses = trackerExpenses.filter(exp => getWeekKey(exp.timestamp) !== currentWeekKey);
+                window.updateTrackerUI();
+            }
+        };
+
+        window.deleteExpense = async function (id) {
+            if (currentUser && db) {
+                try { await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses', id)); }
+                catch (error) { window.showModal("Error", "Could not delete."); }
+            } else {
+                trackerExpenses = trackerExpenses.filter(e => e.id !== id);
+                window.updateTrackerUI();
+            }
+        };
+
+        window.updateTrackerUI = function () {
+            const listEl = document.getElementById('expense-list');
+            const emptyEl = document.getElementById('empty-state');
+            const historyEl = document.getElementById('history-list');
+
+            const currentWeekKey = getWeekKey(Date.now());
+            document.getElementById('current-week-label').innerText = `Week of ${formatWeekDisplay(currentWeekKey)}`;
+
+            // Group all expenses by Week (Monday start)
+            const groupedExpenses = {};
+            trackerExpenses.forEach(exp => {
+                const wk = getWeekKey(exp.timestamp);
+                if (!groupedExpenses[wk]) groupedExpenses[wk] = { spent: 0, items: [] };
+                groupedExpenses[wk].items.push(exp);
+                groupedExpenses[wk].spent += exp.amount;
+            });
+
+            // Extract ONLY current week's data for the main dashboard
+            const currentWeekData = groupedExpenses[currentWeekKey] || { spent: 0, items: [] };
+            const totalSpent = currentWeekData.spent;
+            const remaining = weeklyBudget - totalSpent;
+            const percentSpent = Math.min((totalSpent / weeklyBudget) * 100, 100) || 0;
+
+            // Update Current Week Main Cards
+            document.getElementById('spent-amount').innerText = `${trackerFormatter.format(totalSpent)} Spent`;
+            const remainEl = document.getElementById('remaining-amount');
+            remainEl.innerText = trackerFormatter.format(remaining);
+            remainEl.className = remaining < 0 ? 'text-lg font-bold text-red-500' : 'text-lg font-bold text-emerald-600';
+
+            const bar = document.getElementById('budget-bar');
+            bar.style.width = `${percentSpent}%`;
+
+            const statusText = document.getElementById('budget-status-text');
+            if (percentSpent < 50) { bar.className = "h-3 rounded-full transition-all duration-500 bg-emerald-500"; statusText.innerText = "You are well within your budget this week."; statusText.className = "text-xs text-emerald-600 font-medium"; }
+            else if (percentSpent < 85) { bar.className = "h-3 rounded-full transition-all duration-500 bg-orange-400"; statusText.innerText = "Careful! You're getting closer to your limit."; statusText.className = "text-xs text-orange-500 font-medium"; }
+            else { bar.className = "h-3 rounded-full transition-all duration-500 bg-red-500"; statusText.innerText = remaining < 0 ? "You have exceeded your weekly budget!" : "Warning: Almost out of budget!"; statusText.className = "text-xs text-red-600 font-bold"; }
+
+            // Render Current Week Transactions
+            if (currentWeekData.items.length === 0) {
+                emptyEl.classList.remove('hidden'); listEl.classList.add('hidden');
+            } else {
+                emptyEl.classList.add('hidden'); listEl.classList.remove('hidden');
+                listEl.innerHTML = currentWeekData.items.map(exp => {
+                    let icon = 'ph-receipt', bg = 'bg-slate-100', color = 'text-slate-600';
+                    if (exp.category === 'Meal') { icon = 'ph-hamburger'; bg = 'bg-orange-100'; color = 'text-orange-600'; }
+                    if (exp.category === 'Transport') { icon = 'ph-car'; bg = 'bg-blue-100'; color = 'text-blue-600'; }
+                    return `<li class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex justify-between items-center group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full ${bg} ${color} flex items-center justify-center"><i class="ph ${icon} text-xl"></i></div>
+                            <div><p class="font-semibold text-slate-800 text-sm">${exp.desc}</p><p class="text-xs text-slate-400">${exp.date} • ${exp.category}</p></div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <p class="font-bold text-slate-700 text-sm">${trackerFormatter.format(exp.amount)}</p>
+                            <button onclick="window.deleteExpense('${exp.id}')" class="text-slate-300 hover:text-red-500 transition-colors hidden md:block opacity-0 group-hover:opacity-100"><i class="ph-fill ph-trash text-lg"></i></button>
+                        </div>
+                    </li>`;
+                }).join('');
+            }
+
+            // Render Past Weeks History
+            const historyKeys = Object.keys(groupedExpenses)
+                .filter(k => k !== currentWeekKey)
+                .sort((a, b) => new Date(b) - new Date(a)); // Sort newest history first
+
+            if (historyKeys.length === 0) {
+                historyEl.innerHTML = '<div class="h-full flex items-center justify-center text-slate-400 text-xs text-center p-4">No previous records yet. Past weeks will automatically appear here.</div>';
+            } else {
+                historyEl.innerHTML = historyKeys.map(k => {
+                    const pastSpent = groupedExpenses[k].spent;
+                    const pastBal = weeklyBudget - pastSpent;
+                    const balClass = pastBal < 0 ? 'text-red-500' : 'text-emerald-600';
+                    return `
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center shadow-sm">
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-700">Week of ${formatWeekDisplay(k)}</p>
+                            <p class="text-[10px] text-slate-500">Spent: ${trackerFormatter.format(pastSpent)}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400 font-medium">Remaining</p>
+                            <p class="text-xs font-bold ${balClass}">${trackerFormatter.format(pastBal)}</p>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        };
+
+        // --- UI UTILITIES ---
+        window.openBudgetModal = () => {
+            document.getElementById('new-budget-input').value = weeklyBudget;
+            document.getElementById('budget-modal').classList.replace('hidden', 'flex');
+            setTimeout(() => { document.getElementById('budget-modal-content').classList.replace('scale-95', 'scale-100'); }, 10);
+        };
+        window.closeBudgetModal = () => {
+            document.getElementById('budget-modal-content').classList.replace('scale-100', 'scale-95');
+            setTimeout(() => { document.getElementById('budget-modal').classList.replace('flex', 'hidden'); }, 150);
+        };
+        window.saveBudget = async () => {
+            const newBudget = parseFloat(document.getElementById('new-budget-input').value);
+            if (isNaN(newBudget) || newBudget <= 0) return;
+            if (currentUser && db) {
+                try { await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'budget'), { amount: newBudget }, { merge: true }); window.closeBudgetModal(); }
+                catch (error) { window.showModal("Error", "Could not save."); }
+            }
+        };
+        window.showModal = (title, text) => {
+            document.getElementById('message-modal-title').innerText = title;
+            document.getElementById('message-modal-text').innerText = text;
+            document.getElementById('message-modal').classList.replace('hidden', 'flex');
+            setTimeout(() => { document.getElementById('message-modal-content').classList.replace('scale-95', 'scale-100'); }, 10);
+        };
+        window.closeModal = () => {
+            document.getElementById('message-modal-content').classList.replace('scale-100', 'scale-95');
+            setTimeout(() => { document.getElementById('message-modal').classList.replace('flex', 'hidden'); }, 150);
+        };
+
+        // Init UI
+        document.addEventListener('DOMContentLoaded', () => { window.switchTab('home'); });
+
+        // =========================================================================================
+        // MATRIX RENDER & DYNAMIC CRUD ENGINE
+        // =========================================================================================
+        window.renderSoupMatrix = function () {
+            const nameHeaderRow = document.getElementById('soup-header-row-names');
+            const stockHeaderRow = document.getElementById('soup-header-row-stock');
+            const priceHeaderRow = document.getElementById('soup-header-row-price');
+            const matrixBody = document.getElementById('soup-matrix-body');
+
+            if (!nameHeaderRow || !matrixBody) return;
+
+            let nameHeaderHTML = `
+                <th class="p-4 sticky left-0 bg-slate-100 z-20 min-w-[220px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Soup Recipe</th>
+                <th class="p-4 bg-slate-100 min-w-[120px]">Function</th>
+                <th class="p-4 bg-slate-100 min-w-[140px] text-right text-blue-600">Est. Cost / Pot</th>
+            `;
+            let stockHeaderHTML = `
+                <td class="p-4 sticky left-0 bg-amber-50/80 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.05)] text-slate-700 font-bold">In Kitchen? (Check)</td>
+                <td class="p-4 bg-amber-50/50 text-slate-400">——</td>
+                <td class="p-4 bg-amber-50/50 text-slate-400 text-right">——</td>
+            `;
+            let priceHeaderHTML = `
+                <td class="p-4 sticky left-0 bg-blue-50/80 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.05)] text-slate-700 font-bold">Unit Price (/100g)</td>
+                <td class="p-4 bg-blue-50/40 text-slate-400">——</td>
+                <td class="p-4 bg-blue-50/40 text-slate-400 text-right">——</td>
+            `;
+
+            runtimeHerbs.forEach(h => {
+                const isChecked = soupStockState[h.id] ? 'checked' : '';
+                const currentPrice = soupPriceState[h.id] !== undefined ? soupPriceState[h.id] : 10;
+
+                nameHeaderHTML += `
+                    <th onclick="window.openHerbEncyclopedia('${h.id}')" class="p-3 text-center border-l border-slate-200 cursor-pointer text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:underline transition-all font-semibold text-xs min-w-[90px]">
+                        ${h.name} ℹ️
+                    </th>`;
+                stockHeaderHTML += `
+                    <td class="p-3 text-center border-l border-slate-200 bg-amber-50/20">
+                        <input type="checkbox" ${isChecked} onchange="window.toggleHerbStock('${h.id}', this.checked)" class="w-4 h-4 text-orange-500 rounded border-slate-300 cursor-pointer">
+                    </td>
+                `;
+                priceHeaderHTML += `
+                    <td class="p-2 text-center border-l border-slate-200 bg-blue-50/10">
+                        <div class="flex items-center justify-center gap-0.5 max-w-[75px] mx-auto bg-white px-1 py-0.5 rounded border border-slate-300">
+                            <span class="text-[9px] text-slate-400">RM</span>
+                            <input type="number" value="${currentPrice}" onchange="window.updateHerbPrice('${h.id}', this.value)" class="w-10 text-right font-bold text-xs bg-transparent outline-none">
+                        </div>
+                    </td>
+                `;
+            });
+
+            nameHeaderRow.innerHTML = nameHeaderHTML;
+            stockHeaderRow.innerHTML = stockHeaderHTML;
+            priceHeaderRow.innerHTML = priceHeaderHTML;
+
+            // Render Rows with Adaptive Color Conditions Rules Engine
+            let bodyHTML = "";
+            runtimeRecipes.forEach(recipe => {
+                let allIngredientsAvailable = true;
+                let sumRecipe100gPrices = 0;
+
+                recipe.matches.forEach(herbId => {
+                    if (!soupStockState[herbId]) allIngredientsAvailable = false;
+                    sumRecipe100gPrices += (soupPriceState[herbId] !== undefined ? soupPriceState[herbId] : 10);
+                });
+
+                const finalRecipeCost = sumRecipe100gPrices * 0.15;
+                const rowStatusBg = allIngredientsAvailable ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : 'bg-red-500/5 hover:bg-red-500/10';
+                const labelBadgeColor = allIngredientsAvailable ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-red-100 text-red-800 border-red-200';
+
+                bodyHTML += `
+                    <tr class="${rowStatusBg} transition-colors">
+                        <td class="p-4 font-bold border-b border-slate-100 sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] ${allIngredientsAvailable ? 'bg-emerald-50' : 'bg-red-50'}">
+                            <span class="px-2 py-1 rounded-md border text-xs ${labelBadgeColor}">${recipe.name}</span>
+                        </td>
+                        <td class="p-4 text-slate-500 text-xs border-b border-slate-100">${recipe.category}</td>
+                        <td class="p-4 text-right font-bold border-b border-slate-100 text-slate-800">RM ${finalRecipeCost.toFixed(2)}</td>
+                `;
+
+                runtimeHerbs.forEach(h => {
+                    const isRequired = recipe.matches.includes(h.id);
+                    bodyHTML += `
+                        <td class="p-3 text-center border-l border-slate-100/60 text-base border-b border-slate-100">
+                            ${isRequired ? '<i class="ph-fill ph-check-circle text-orange-500"></i>' : '<span class="text-slate-200 font-light text-xs">-</span>'}
+                        </td>
+                    `;
+                });
+                bodyHTML += `</tr>`;
+            });
+            matrixBody.innerHTML = bodyHTML;
+        };
+
+        // --- ENCYCLOPEDIA POPUP INJECTOR ---
+        window.openHerbEncyclopedia = function (herbId) {
+            const herb = runtimeHerbs.find(h => h.id === herbId);
+            if (!herb) return;
+
+            document.getElementById('herb-modal-title').innerText = herb.name;
+            document.getElementById('herb-modal-prop').innerText = herb.prop;
+            document.getElementById('herb-modal-effects').innerText = herb.effects;
+            document.getElementById('herb-modal-taboo').innerText = herb.taboo;
+            document.getElementById('herb-modal-look').innerText = herb.look;
+            document.getElementById('herb-modal-smell').innerText = herb.smell;
+
+            const imgEl = document.getElementById('herb-modal-image');
+            const noImgEl = document.getElementById('herb-modal-no-image');
+
+            if (herb.img && herb.img.trim() !== "") {
+                imgEl.src = herb.img;
+                imgEl.classList.remove('hidden');
+                noImgEl.classList.add('hidden');
+            } else {
+                imgEl.classList.add('hidden');
+                noImgEl.classList.remove('hidden');
+            }
+
+            document.getElementById('herb-modal').classList.replace('hidden', 'flex');
+        };
+
+        window.closeHerbModal = function () {
+            document.getElementById('herb-modal').classList.replace('flex', 'hidden');
+        };
+
+        // --- MODAL ACTIONS ---
+        window.openAddHerbModal = () => document.getElementById('add-herb-modal').classList.replace('hidden', 'flex');
+        window.closeAddHerbModal = () => document.getElementById('add-herb-modal').classList.replace('flex', 'hidden');
+
+        window.openAddSoupModal = () => {
+            const container = document.getElementById('soup-ingredients-checklist');
+            container.innerHTML = runtimeHerbs.map(h => `
+                <label class="flex items-center gap-1.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-orange-400">
+                    <input type="checkbox" value="${h.id}" class="soup-setup-checkbox w-3.5 h-3.5 text-orange-500 rounded border-slate-300">
+                    <span class="truncate">${h.name}</span>
+                </label>
+            `).join('');
+            document.getElementById('add-soup-modal').classList.replace('hidden', 'flex');
+        };
+        window.closeAddSoupModal = () => document.getElementById('add-soup-modal').classList.replace('flex', 'hidden');
+
+        // --- SUBMIT COMPILERS ---
+        window.submitNewHerb = function () {
+            const name = document.getElementById('new-herb-name').value.trim();
+            const id = document.getElementById('new-herb-id').value.trim().toLowerCase();
+            const prop = document.getElementById('new-herb-prop').value.trim();
+            const textEffects = document.getElementById('new-herb-effects').value.trim();
+            const taboo = document.getElementById('new-herb-taboo').value.trim();
+            const look = document.getElementById('new-herb-look').value.trim();
+            const smell = document.getElementById('new-herb-smell').value.trim();
+            const img = document.getElementById('new-herb-img').value.trim();
+
+            if (!name || !id) return alert("Herb name and ID cannot be empty!");
+            if (runtimeHerbs.some(h => h.id === id)) return alert("This ID already exists. Please choose a unique identifier.");
+
+            const newHerbObject = { id, name, prop, effects: textEffects, taboo, look, smell, img };
+            runtimeHerbs.push(newHerbObject);
+            soupStockState[id] = false;
+            soupPriceState[id] = 10;
+
+            window.saveSoupMatrixToCloud();
+            window.closeAddHerbModal();
+
+            document.getElementById('new-herb-name').value = '';
+            document.getElementById('new-herb-id').value = '';
+            document.getElementById('new-herb-prop').value = '';
+            document.getElementById('new-herb-effects').value = '';
+            document.getElementById('new-herb-taboo').value = '';
+            document.getElementById('new-herb-look').value = '';
+            document.getElementById('new-herb-smell').value = '';
+            document.getElementById('new-herb-img').value = '';
+        };
+
+        window.submitNewSoup = function () {
+            const name = document.getElementById('new-soup-name').value.trim();
+            const category = document.getElementById('new-soup-cat').value.trim();
+            const checkedBoxes = document.querySelectorAll('.soup-setup-checkbox:checked');
+            const matches = Array.from(checkedBoxes).map(box => box.value);
+
+            if (!name) return alert("Soup name cannot be empty!");
+            if (matches.length === 0) return alert("Please select at least one herb ingredient!");
+
+            const newRecipeObject = { name, category: category || "Custom Regulation", matches };
+            runtimeRecipes.push(newRecipeObject);
+
+            window.saveSoupMatrixToCloud();
+            window.closeAddSoupModal();
+
+            document.getElementById('new-soup-name').value = '';
+            document.getElementById('new-soup-cat').value = '';
+        };
+
+        window.toggleHerbStock = async function (herbId, isChecked) { soupStockState[herbId] = isChecked; window.saveSoupMatrixToCloud(); };
+        window.updateHerbPrice = async function (herbId, newValue) { const val = parseFloat(newValue); soupPriceState[herbId] = isNaN(val) ? 0 : val; window.saveSoupMatrixToCloud(); };
+
+        window.saveSoupMatrixToCloud = async function () {
+            if (currentUser && db) {
+                try {
+                    const soupRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'soupSystemData');
+                    await setDoc(soupRef, { herbs: runtimeHerbs, recipes: runtimeRecipes, stock: soupStockState, prices: soupPriceState }, { merge: true });
+                } catch (e) { console.error("Cloud database write error", e); }
+            } else {
+                window.renderSoupMatrix();
+            }
+        };
+
+    </script>
+</body>
+
+</html>
