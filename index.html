@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Wealth Portal</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,7 +13,42 @@
     <base target="_blank">
     <style>
         html,
-        body {
+        body { /* From index.html */
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        /* Tailwind config from EveryTrace.html */
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts (Combined) -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        /* Combined styles */
+        html,
+        body { /* From index.html */
             width: 100%;
             height: 100%;
             margin: 0;
@@ -22,6 +58,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
+            transition: background-color 0.3s, color 0.3s; /* From EveryTrace.html */
         }
 
         .custom-scrollbar::-webkit-scrollbar {
@@ -38,6 +75,39 @@
             background: #cbd5e1;
             border-radius: 4px;
         }
+        /* EveryTrace.html specific styles */
+        .font-display {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .dark .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .glow-blue {
+            box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.4);
+        }
+
+        .glow-purple {
+            box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.4);
+        }
+
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 0.15; transform: scale(1); }
+            50% { opacity: 0.25; transform: scale(1.1); }
+        }
+        .ambient-bg-1 { animation: pulse-slow 8s ease-in-out infinite; }
+        .ambient-bg-2 { animation: pulse-slow 12s ease-in-out infinite alternate; }
 
         .animate-fade-in {
             animation: fadeIn 0.3s ease-in-out;
@@ -57,10 +127,12 @@
     </style>
 </head>
 
-<body class="relative min-h-screen flex flex-col overflow-x-hidden w-full">
+<body
+    class="relative min-h-screen flex flex-col overflow-x-hidden w-full bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 selection:bg-brand-500 selection:text-white">
 
     <!-- Full-screen loading spinner — shown while Firebase checks stored session (usually < 300ms) -->
-    <div id="loading-screen" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center gap-4">
+    <div id="loading-screen"
+        class="fixed inset-0 bg-white dark:bg-slate-950 z-50 flex flex-col items-center justify-center gap-4">
         <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         <p class="text-sm text-slate-400 font-medium">Loading your portal…</p>
     </div>
@@ -68,7 +140,7 @@
     <!-- Secure Login Overlay — starts hidden; only shown when no session is found -->
     <div id="auth-screen" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full mx-4 border border-slate-100">
-            <div class="flex justify-center mb-4">
+            <div class="flex justify-center mb-4"> <!-- From EveryTrace.html -->
                 <i class="ph-fill ph-lock-key text-4xl text-blue-600"></i>
             </div>
             <h2 class="text-2xl font-bold text-slate-800 mb-2 text-center">My Portal Access</h2>
@@ -86,7 +158,7 @@
                         class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                 </div>
                 <div class="flex gap-3 pt-2">
-                    <button type="submit" onclick="window.authMode='login'"
+                    <button type="submit"
                         class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 text-sm rounded-lg transition-colors">Sign In</button>
                 </div>
                 <p id="auth-error" class="text-xs text-red-500 mt-2 hidden text-center font-medium"></p>
@@ -94,64 +166,71 @@
         </div>
     </div>
 
+    <!-- Ambient Decorative Gradients (From EveryTrace.html) -->
+    <div
+        class="absolute -top-40 -left-40 w-96 h-96 bg-blue-400 dark:bg-blue-600 rounded-full filter blur-[100px] ambient-bg-1 pointer-events-none opacity-20">
+    </div>
+    <div
+        class="absolute top-1/2 -right-40 w-96 h-96 bg-purple-400 dark:bg-purple-600 rounded-full filter blur-[100px] ambient-bg-2 pointer-events-none opacity-20">
+    </div>
+
     <!-- MAIN APP WRAPPER (Hidden until logged in) -->
     <div id="main-app" class="hidden flex-1 flex flex-col h-full">
 
         <!-- Navigation Bar -->
-        <nav class="bg-white border-b border-slate-200 sticky top-0 z-40 mb-6 shadow-sm shrink-0">
+        <nav class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 mb-6 shadow-sm shrink-0">
             <div class="max-w-6xl mx-auto px-4 flex justify-between items-center h-16">
-                <div class="font-bold text-lg text-blue-600 flex items-center gap-2">
+                <div class="font-bold text-lg text-blue-600 dark:text-blue-400 flex items-center gap-2">
                     <i class="ph-fill ph-wallet"></i> Wealth Portal
                 </div>
                 <!-- Desktop Nav -->
                 <div class="hidden md:flex gap-1">
                     <button id="tab-btn-home" onclick="window.switchTab('home')"
-                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Home</button>
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Home</button>
                     <button id="tab-btn-calculator" onclick="window.switchTab('calculator')"
-                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Planner</button>
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Planner</button>
                     <button id="tab-btn-tracker" onclick="window.switchTab('tracker')"
-                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Tracker</button>
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Tracker</button>
                     <button id="tab-btn-sheets" onclick="window.switchTab('sheets')"
-                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Master Sheets</button>
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Master Sheets</button>
                     <button id="tab-btn-soup" onclick="window.switchTab('soup')"
-                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors">Soup Master</button>
-                    <!-- Cross-app link — session is shared, no re-login needed -->
-                    <a href="EveryTrace.html" target="_self"
-                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors flex items-center gap-1.5 text-indigo-600 hover:bg-indigo-50"
-                        title="Switch to EveryTrace">
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Soup Master</button>
+                    <button id="tab-btn-everytrace" onclick="window.switchTab('everytrace')"
+                        class="px-4 py-2 font-semibold text-sm rounded-lg transition-colors flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                        title="EveryTrace">
                         <i class="ph-bold ph-hourglass-medium"></i> EveryTrace
-                    </a>
+                    </button>
                 </div>
                 <!-- Right side: App switch + Logout -->
                 <div class="flex items-center gap-2">
-                    <a href="EveryTrace.html" target="_self"
-                        class="hidden md:flex text-xs font-semibold px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors items-center gap-1"
-                        style="display:none"
-                        title="Open EveryTrace (session shared)">
-                        <i class="ph-bold ph-hourglass-medium"></i>
-                    </a>
-                    <button id="logout-btn" onclick="window.logout()"
-                        class="text-xs font-semibold px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1">
+                    <!-- EveryTrace specific buttons (from EveryTrace.html header) -->
+                    <button onclick="toggleDarkMode()"
+                        class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        title="Toggle Dark Mode">
+                        <i id="theme-icon" class="ph-bold ph-moon text-xl"></i>
+                    </button>
+                    <button onclick="openDataModal()"
+                        class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        title="Data Backup/Restore">
+                        <i class="ph-bold ph-database text-xl"></i>
+                    </button>
+                    <button onclick="window.logout()"
+                        class="w-10 h-10 rounded-xl flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                        title="Logout">
                         <i class="ph-bold ph-sign-out"></i> Logout
                     </button>
                 </div>
             </div>
             <!-- Mobile Nav (Scrollable) -->
             <div class="md:hidden flex gap-2 overflow-x-auto px-4 pb-2 custom-scrollbar">
-                <button id="mob-tab-btn-home" onclick="window.switchTab('home')"
-                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Home</button>
-                <button id="mob-tab-btn-calculator" onclick="window.switchTab('calculator')"
-                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Planner</button>
-                <button id="mob-tab-btn-tracker" onclick="window.switchTab('tracker')"
-                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Tracker</button>
-                <button id="mob-tab-btn-sheets" onclick="window.switchTab('sheets')"
-                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Master Sheets</button>
-                <button id="mob-tab-btn-soup" onclick="window.switchTab('soup')"
-                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg">Soup Master</button>
-                <a href="EveryTrace.html" target="_self"
-                    class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-indigo-600 bg-indigo-50 flex items-center gap-1">
+                <button id="mob-tab-btn-home" onclick="window.switchTab('home')" class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Home</button>
+                <button id="mob-tab-btn-calculator" onclick="window.switchTab('calculator')" class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Planner</button>
+                <button id="mob-tab-btn-tracker" onclick="window.switchTab('tracker')" class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Tracker</button>
+                <button id="mob-tab-btn-sheets" onclick="window.switchTab('sheets')" class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Master Sheets</button>
+                <button id="mob-tab-btn-soup" onclick="window.switchTab('soup')" class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">Soup Master</button>
+                <button id="mob-tab-btn-everytrace" onclick="window.switchTab('everytrace')" class="whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 flex items-center gap-1">
                     <i class="ph-bold ph-hourglass-medium"></i> EveryTrace
-                </a>
+                </button>
             </div>
         </nav>
 
@@ -697,6 +776,259 @@
                 </div>
             </div>
 
+            <!-- ================= VIEW 6: EVERYTRACE ================= -->
+            <div id="view-everytrace" class="hidden animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10 flex flex-col min-h-screen">
+                <!-- Main Layout Split -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
+
+                    <!-- Left Navigation Sidebar / Mobile Sticky Tab Bar -->
+                    <aside class="lg:col-span-3 flex flex-col gap-3">
+                        <div class="glass-card p-4 rounded-2xl shadow-sm hidden lg:block">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 px-2">Navigation</p>
+                            <nav class="flex flex-col gap-1">
+                                <button onclick="switchEveryTraceSection('dashboard')" id="nav-dashboard"
+                                    class="nav-btn active flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all bg-blue-500 text-white shadow-md shadow-blue-500/10">
+                                    <i class="ph-bold ph-layout text-lg"></i> Dashboard
+                                </button>
+                                <button onclick="switchEveryTraceSection('events')" id="nav-events"
+                                    class="nav-btn flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50">
+                                    <i class="ph-bold ph-calendar text-lg"></i> Anniversary & Dates
+                                </button>
+                                <button onclick="switchEveryTraceSection('assets')" id="nav-assets"
+                                    class="nav-btn flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50">
+                                    <i class="ph-bold ph-package text-lg"></i> Life Assets
+                                </button>
+                                <button onclick="switchEveryTraceSection('subs')" id="nav-subs"
+                                    class="nav-btn flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50">
+                                    <i class="ph-bold ph-credit-card text-lg"></i> Subscriptions
+                                </button>
+                                <button onclick="switchEveryTraceSection('goals')" id="nav-goals"
+                                    class="nav-btn flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50">
+                                    <i class="ph-bold ph-target text-lg"></i> Annual Goals & Travel
+                                </button>
+                            </nav>
+                        </div>
+
+                        <!-- Year Progress Widget -->
+                        <div class="glass-card p-5 rounded-2xl shadow-sm flex flex-col gap-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                    <i class="ph-fill ph-hourglass-high text-blue-500"></i> Year Progress
+                                </span>
+                                <span id="year-label" class="text-xs text-slate-500 font-bold">2026</span>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                    <span>Elapsed</span>
+                                    <span id="year-pct-text">0.0%</span>
+                                </div>
+                                <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                                    <div id="year-progress-bar"
+                                        class="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full"
+                                        style="width: 0%"></div>
+                                </div>
+                                <p id="year-countdown-text" class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
+                                </p>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <!-- Main Content Area -->
+                    <main class="lg:col-span-9 flex flex-col gap-6">
+
+                        <!-- SECTION: DASHBOARD -->
+                        <section id="sec-dashboard" class="section-content flex flex-col gap-6">
+                            <!-- Quick Stats Row -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div
+                                    class="glass-card p-6 rounded-2xl shadow-sm flex items-center gap-4 border-l-4 border-blue-500">
+                                    <div
+                                        class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                        <i class="ph-bold ph-calendar-check text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm text-slate-400">Active Dates</h3>
+                                        <p id="stat-dates" class="text-2xl font-bold font-display">0</p>
+                                    </div>
+                                </div>
+                                <div
+                                    class="glass-card p-6 rounded-2xl shadow-sm flex items-center gap-4 border-l-4 border-emerald-500">
+                                    <div
+                                        class="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                        <i class="ph-bold ph-coin text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm text-slate-400">Asset Cost / Day</h3>
+                                        <p id="stat-assets-cost" class="text-2xl font-bold font-display">RM0.00</p>
+                                    </div>
+                                </div>
+                                <div
+                                    class="glass-card p-6 rounded-2xl shadow-sm flex items-center gap-4 border-l-4 border-purple-500">
+                                    <div
+                                        class="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                                        <i class="ph-bold ph-sparkles text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm text-slate-400">Subscription Monthly</h3>
+                                        <p id="stat-subs-monthly" class="text-2xl font-bold font-display">RM0.00</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Highlight / Pin Cards Carousel or Grid -->
+                            <div class="flex flex-col gap-4">
+                                <div class="flex justify-between items-center">
+                                    <h2 class="text-lg font-bold font-display flex items-center gap-2">
+                                        <i class="ph-bold ph-push-pin text-blue-500"></i> Pinned & Upcoming Dates
+                                    </h2>
+                                    <button onclick="switchEveryTraceSection('events')"
+                                        class="text-xs font-semibold text-blue-500 hover:underline">View All</button>
+                                </div>
+                                <div id="pinned-dates-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Dynamically loaded cards -->
+                                </div>
+                            </div>
+
+                            <!-- Recent Assets & Cost Metrics -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="glass-card p-6 rounded-2xl shadow-sm flex flex-col gap-4">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                            <i class="ph-bold ph-package text-emerald-500"></i> Daily Cost Efficiency
+                                        </h3>
+                                        <button onclick="switchEveryTraceSection('assets')"
+                                            class="text-xs text-blue-500 font-semibold hover:underline">Manage Assets</button>
+                                    </div>
+                                    <div id="dashboard-assets-list"
+                                        class="flex flex-col gap-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                                        <!-- Dynamic asset summary -->
+                                    </div>
+                                </div>
+
+                                <!-- Active Subscriptions Expirations -->
+                                <div class="glass-card p-6 rounded-2xl shadow-sm flex flex-col gap-4">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                            <i class="ph-bold ph-bell-ringing text-purple-500"></i> Subscription Expirations
+                                        </h3>
+                                        <button onclick="switchEveryTraceSection('subs')"
+                                            class="text-xs text-blue-500 font-semibold hover:underline">Manage Subs</button>
+                                    </div>
+                                    <div id="dashboard-subs-list"
+                                        class="flex flex-col gap-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                                        <!-- Dynamic sub summary -->
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- SECTION: EVENTS -->
+                        <section id="sec-events" class="section-content hidden flex flex-col gap-6">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h2 class="text-xl font-bold font-display">Anniversaries & Dates</h2>
+                                    <p class="text-xs text-slate-500">Track special moments, countdowns, and anniversaries.</p>
+                                </div>
+                                <button onclick="openEventModal()"
+                                    class="bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm px-4 py-2 rounded-xl shadow-md shadow-blue-500/10 flex items-center gap-2 transition-colors">
+                                    <i class="ph-bold ph-plus"></i> Add Date
+                                </button>
+                            </div>
+
+                            <div id="events-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <!-- Loaded events cards -->
+                            </div>
+                        </section>
+
+                        <!-- SECTION: ASSETS -->
+                        <section id="sec-assets" class="section-content hidden flex flex-col gap-6">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h2 class="text-xl font-bold font-display">Personal Life Assets</h2>
+                                    <p class="text-xs text-slate-500">Compute "cost per day" to make smart purchasing decisions.
+                                    </p>
+                                </div>
+                                <button onclick="openAssetModal()"
+                                    class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm px-4 py-2 rounded-xl shadow-md shadow-emerald-500/10 flex items-center gap-2 transition-colors">
+                                    <i class="ph-bold ph-plus"></i> Add Asset
+                                </button>
+                            </div>
+
+                            <div id="assets-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <!-- Loaded assets -->
+                            </div>
+                        </section>
+
+                        <!-- SECTION: SUBSCRIPTIONS -->
+                        <section id="sec-subs" class="section-content hidden flex flex-col gap-6">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h2 class="text-xl font-bold font-display">Subscription Services</h2>
+                                    <p class="text-xs text-slate-500">Track active memberships, renewal dates, and payments.</p>
+                                </div>
+                                <button onclick="openSubModal()"
+                                    class="bg-purple-500 hover:bg-purple-600 text-white font-semibold text-sm px-4 py-2 rounded-xl shadow-md shadow-purple-500/10 flex items-center gap-2 transition-colors">
+                                    <i class="ph-bold ph-plus"></i> Add Subscription
+                                </button>
+                            </div>
+
+                            <div id="subs-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <!-- Loaded subscriptions -->
+                            </div>
+                        </section>
+
+                        <!-- SECTION: GOALS -->
+                        <section id="sec-goals" class="section-content hidden flex flex-col gap-6">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h2 class="text-xl font-bold font-display">Annual Goals & Travel</h2>
+                                    <p class="text-xs text-slate-500">Milestones, future trips, and goals for this year.</p>
+                                </div>
+                                <button onclick="openGoalModal()"
+                                    class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-sm px-4 py-2 rounded-xl shadow-md shadow-indigo-500/10 flex items-center gap-2 transition-colors">
+                                    <i class="ph-bold ph-plus"></i> Add Goal
+                                </button>
+                            </div>
+
+                            <div id="goals-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Dynamic goals/travel -->
+                            </div>
+                        </section>
+
+                    </main>
+                </div>
+
+                <!-- Sticky Footer for Mobile (EveryTrace specific) -->
+                <footer
+                    class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 px-6 py-2 flex justify-around items-center z-40 backdrop-blur-md">
+                    <button onclick="switchEveryTraceSection('dashboard')" id="mob-nav-dashboard"
+                        class="flex flex-col items-center gap-0.5 text-blue-500 font-bold">
+                        <i class="ph-bold ph-layout text-xl"></i>
+                        <span class="text-[10px]">Home</span>
+                    </button>
+                    <button onclick="switchEveryTraceSection('events')" id="mob-nav-events"
+                        class="flex flex-col items-center gap-0.5 text-slate-400">
+                        <i class="ph-bold ph-calendar text-xl"></i>
+                        <span class="text-[10px]">Dates</span>
+                    </button>
+                    <button onclick="switchEveryTraceSection('assets')" id="mob-nav-assets"
+                        class="flex flex-col items-center gap-0.5 text-slate-400">
+                        <i class="ph-bold ph-package text-xl"></i>
+                        <span class="text-[10px]">Assets</span>
+                    </button>
+                    <button onclick="switchEveryTraceSection('subs')" id="mob-nav-subs"
+                        class="flex flex-col items-center gap-0.5 text-slate-400">
+                        <i class="ph-bold ph-credit-card text-xl"></i>
+                        <span class="text-[10px]">Subs</span>
+                    </button>
+                    <button onclick="switchEveryTraceSection('goals')" id="mob-nav-goals"
+                        class="flex flex-col items-center gap-0.5 text-slate-400">
+                        <i class="ph-bold ph-target text-xl"></i>
+                        <span class="text-[10px]">Goals</span>
+                    </button>
+                </footer>
+            </div>
+
         </main>
     </div>
 
@@ -777,6 +1109,238 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL: ADD/EDIT EVENT (From EveryTrace.html) -->
+    <div id="event-modal"
+        class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div
+            class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-xl w-full max-w-md mx-4 border border-slate-100 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="event-modal-title" class="text-lg font-bold font-display text-slate-800 dark:text-white">Add
+                    Anniversary/Date</h3>
+                <button onclick="closeEventModal()"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+            <form id="event-form" onsubmit="saveEvent(event)" class="space-y-4">
+                <input type="hidden" id="event-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Event Title</label>
+                    <input type="text" id="event-title" required placeholder="e.g. My Birthday, Anniversary"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Target Date</label>
+                        <input type="date" id="event-date" required
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Type</label>
+                        <select id="event-type"
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="countdown">Countdown</option>
+                            <option value="elapsed">Days Elapsed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Theme Color</label>
+                        <input type="color" id="event-color" value="#3b82f6"
+                            class="w-full h-10 p-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent outline-none cursor-pointer">
+                    </div>
+                    <div class="flex items-center gap-2 pt-5">
+                        <input type="checkbox" id="event-pinned"
+                            class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500">
+                        <label for="event-pinned" class="text-xs font-semibold text-slate-500">Pin to Dashboard</label>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeEventModal()"
+                        class="px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">Cancel</button>
+                    <button type="submit"
+                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm px-6 py-2.5 rounded-xl shadow-md">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD/EDIT ASSET (From EveryTrace.html) -->
+    <div id="asset-modal"
+        class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div
+            class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-xl w-full max-w-md mx-4 border border-slate-100 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="asset-modal-title" class="text-lg font-bold font-display text-slate-800 dark:text-white">Add
+                    Asset</h3>
+                <button onclick="closeAssetModal()"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+            <form id="asset-form" onsubmit="saveAsset(event)" class="space-y-4">
+                <input type="hidden" id="asset-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Asset Name</label>
+                    <input type="text" id="asset-name" required placeholder="e.g. MacBook Pro, iPhone"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Purchase Price (RM)</label>
+                        <input type="number" step="0.01" id="asset-price" required placeholder="0.00"
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Purchase Date</label>
+                        <input type="date" id="asset-date" required
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Description / Notes</label>
+                    <textarea id="asset-notes" placeholder="Optional specifications or warranty info..."
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeAssetModal()"
+                        class="px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">Cancel</button>
+                    <button type="submit"
+                        class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm px-6 py-2.5 rounded-xl shadow-md">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD/EDIT SUBSCRIPTION (From EveryTrace.html) -->
+    <div id="sub-modal"
+        class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div
+            class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-xl w-full max-w-md mx-4 border border-slate-100 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="sub-modal-title" class="text-lg font-bold font-display text-slate-800 dark:text-white">Add
+                    Subscription</h3>
+                <button onclick="closeSubModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+            <form id="sub-form" onsubmit="saveSub(event)" class="space-y-4">
+                <input type="hidden" id="sub-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Service Name</label>
+                    <input type="text" id="sub-name" required placeholder="e.g. iCloud, Spotify, Netflix"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Price (RM)</label>
+                        <input type="number" step="0.01" id="sub-price" required placeholder="0.00"
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Cycle</label>
+                        <select id="sub-cycle"
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Renewal Date</label>
+                    <input type="date" id="sub-date" required
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeSubModal()"
+                        class="px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">Cancel</button>
+                    <button type="submit"
+                        class="bg-purple-500 hover:bg-purple-600 text-white font-semibold text-sm px-6 py-2.5 rounded-xl shadow-md">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD/EDIT GOAL (From EveryTrace.html) -->
+    <div id="goal-modal"
+        class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div
+            class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-xl w-full max-w-md mx-4 border border-slate-100 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="goal-modal-title" class="text-lg font-bold font-display text-slate-800 dark:text-white">Add Goal
+                    / Trip</h3>
+                <button onclick="closeGoalModal()"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+            <form id="goal-form" onsubmit="saveGoal(event)" class="space-y-4">
+                <input type="hidden" id="goal-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Goal Description</label>
+                    <input type="text" id="goal-title" required placeholder="e.g. Travel to Japan, Read 20 Books"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Category</label>
+                    <select id="goal-category"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="annual">Annual Goal</option>
+                        <option value="travel">Travel Plan</option>
+                        <option value="bucket">Bucket List</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeGoalModal()"
+                        class="px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">Cancel</button>
+                    <button type="submit"
+                        class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-sm px-6 py-2.5 rounded-xl shadow-md">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DATA BACKUP / RESTORE (From EveryTrace.html) -->
+    <div id="data-modal"
+        class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div
+            class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-xl w-full max-w-md mx-4 border border-slate-100 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold font-display text-slate-800 dark:text-white">Data Management</h3>
+                <button onclick="closeDataModal()"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <p class="text-xs text-slate-500">Backup your data as a JSON file or restore from a previous backup.</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="exportData()"
+                        class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <i class="ph-bold ph-download-simple text-2xl text-blue-500"></i>
+                        <span class="text-xs font-semibold">Backup Data</span>
+                    </button>
+                    <label
+                        class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                        <i class="ph-bold ph-upload-simple text-2xl text-purple-500"></i>
+                        <span class="text-xs font-semibold">Restore Data</span>
+                        <input type="file" id="import-file" class="hidden" onchange="importData(event)">
+                    </label>
+                </div>
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
+                    <button onclick="clearAllData()"
+                        class="w-full py-2.5 rounded-xl border border-red-200 dark:border-red-900/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs font-semibold transition-colors">
+                        Clear All Data & Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Custom Browser Notifications / Toast System (From EveryTrace.html) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <!-- Herb Encyclopedia Detail Modal -->
     <div id="herb-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center z-50">
@@ -910,7 +1474,7 @@
         import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const isCanvas = typeof __firebase_config !== 'undefined';
-
+        
         // =========================================================================================
         // FIREBASE KEYS
         // =========================================================================================
@@ -924,7 +1488,8 @@
         };
 
         const firebaseConfig = isCanvas ? JSON.parse(__firebase_config) : myFirebaseConfig;
-        const appId = 'wealth-portal-123';
+        const wealthAppId = 'wealth-portal-123'; // Original appId from index.html
+        const everytraceAppId = 'everytrace-portal-123'; // Original appId from EveryTrace.html
         const formatter = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR', maximumFractionDigits: 0 });
         const trackerFormatter = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' });
 
@@ -932,6 +1497,14 @@
         let app, auth, db, currentUser;
         let unsubscribePlanner, unsubscribeSnapshot, unsubscribeBudget, unsubscribeSoup;
         window.isLoadingData = false;
+        
+        // EveryTrace State (from EveryTrace.html)
+        let everyTraceState = {
+            events: [],
+            assets: [],
+            subs: [],
+            goals: []
+        };
 
         // Calculator Data
         let income = 6700;
@@ -951,6 +1524,7 @@
         let runtimeHerbs = [];
         let runtimeRecipes = [];
         let soupStockState = {};
+        let everyTraceUnsubscribeData; // EveryTrace specific unsubscribe
         let soupPriceState = {};
 
         // Default seed arrays used when cloud has no data yet
@@ -1009,31 +1583,43 @@
         ];
 
         // --- INTERNAL TAB NAVIGATION ---
-        window.switchTab = function (tabId) {
-            const tabs = ['home', 'calculator', 'tracker', 'sheets', 'soup'];
+        window.switchTab = function (tabId) { // Modified to include EveryTrace tab
+            const tabs = ['home', 'calculator', 'tracker', 'sheets', 'soup', 'everytrace'];
             tabs.forEach(t => {
-                document.getElementById(`view-${t}`).classList.add('hidden');
+                const viewEl = document.getElementById(`view-${t}`);
+                if (viewEl) viewEl.classList.add('hidden');
                 const dBtn = document.getElementById(`tab-btn-${t}`);
-                if (dBtn) dBtn.className = "px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 hover:bg-slate-100 transition-colors";
+                if (dBtn) dBtn.className = "px-4 py-2 font-semibold text-sm rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800";
                 const mBtn = document.getElementById(`mob-tab-btn-${t}`);
-                if (mBtn) mBtn.className = "whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 hover:bg-slate-100 transition-colors";
+                if (mBtn) mBtn.className = "whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800";
             });
 
             document.getElementById(`view-${tabId}`).classList.remove('hidden');
-
-            const activeDesktop = "px-4 py-2 font-semibold text-sm rounded-lg text-blue-600 bg-blue-50 transition-colors";
-            const activeMobile = "whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-blue-600 bg-blue-50 transition-colors";
+            // Update active classes for desktop and mobile navigation
+            const activeDesktop = "px-4 py-2 font-semibold text-sm rounded-lg text-blue-600 dark:text-blue-500 bg-blue-50 dark:bg-blue-950/30 transition-colors";
+            const activeMobile = "whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-blue-600 dark:text-blue-500 bg-blue-50 dark:bg-blue-950/30 transition-colors";
+            const everyTraceActiveDesktop = "px-4 py-2 font-semibold text-sm rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 flex items-center gap-1.5 transition-colors";
+            const everyTraceActiveMobile = "whitespace-nowrap px-4 py-2 font-semibold text-sm rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 flex items-center gap-1";
 
             const dBtnActive = document.getElementById(`tab-btn-${tabId}`);
-            if (dBtnActive) dBtnActive.className = activeDesktop;
+            if (dBtnActive) dBtnActive.className = (tabId === 'everytrace' ? everyTraceActiveDesktop : activeDesktop);
             const mBtnActive = document.getElementById(`mob-tab-btn-${tabId}`);
-            if (mBtnActive) mBtnActive.className = activeMobile;
+            if (mBtnActive) mBtnActive.className = (tabId === 'everytrace' ? everyTraceActiveMobile : activeMobile);
 
+            // Specific rendering/initialization for each tab
+            if (tabId === 'home') {
+                // No specific action needed, just show the home view
+            }
             if (tabId === 'calculator') {
                 if (chartInstance) { chartInstance.resize(); }
                 else { window.fullRender(); }
             }
             if (tabId === 'soup') window.renderSoupMatrix();
+            if (tabId === 'everytrace') {
+                window.initTheme(); // Initialize theme for EveryTrace
+                window.updateYearProgress(); // Update year progress for EveryTrace
+                window.renderAllEveryTrace(); // Render all EveryTrace sections
+            }
         };
 
         // --- FIREBASE INIT ---
@@ -1060,7 +1646,7 @@
                 if (user) {
                     document.getElementById('auth-screen').classList.add('hidden');
                     document.getElementById('main-app').classList.remove('hidden');
-                    loadAllData();
+                    loadAllData(); // Load data for both portals
                 } else {
                     // No stored session — show the login form
                     document.getElementById('auth-screen').classList.remove('hidden');
@@ -1088,8 +1674,7 @@
             const errorEl = document.getElementById('auth-error');
             errorEl.classList.add('hidden');
             try {
-                if (window.authMode === 'login') await signInWithEmailAndPassword(auth, email, password);
-                else await createUserWithEmailAndPassword(auth, email, password);
+                await signInWithEmailAndPassword(auth, email, password);
             } catch (error) {
                 errorEl.innerText = error.message;
                 errorEl.classList.remove('hidden');
@@ -1103,17 +1688,18 @@
         };
 
         function cleanupListeners() {
-            if (unsubscribePlanner) unsubscribePlanner();
+            if (unsubscribePlanner) unsubscribePlanner(); // Wealth Portal
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             if (unsubscribeBudget) unsubscribeBudget();
             if (unsubscribeSoup) unsubscribeSoup();
+            if (everyTraceUnsubscribeData) everyTraceUnsubscribeData();
             trackerExpenses = [];
         }
 
         function loadAllData() {
             if (!currentUser || !db) return;
 
-            const plannerRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'planner');
+            const plannerRef = doc(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'settings', 'planner'); // Wealth Portal
             unsubscribePlanner = onSnapshot(plannerRef, (docSnap) => {
                 if (docSnap.exists() && docSnap.data().income !== undefined) {
                     const data = docSnap.data();
@@ -1149,7 +1735,7 @@
                 }
             });
 
-            const budgetRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'budget');
+            const budgetRef = doc(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'settings', 'budget'); // Wealth Portal
             unsubscribeBudget = onSnapshot(budgetRef, (docSnap) => {
                 if (docSnap.exists() && docSnap.data().amount) {
                     weeklyBudget = parseFloat(docSnap.data().amount);
@@ -1160,7 +1746,7 @@
                 window.updateTrackerUI();
             });
 
-            const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses');
+            const colRef = collection(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'expenses'); // Wealth Portal
             unsubscribeSnapshot = onSnapshot(colRef, (snapshot) => {
                 trackerExpenses = [];
                 snapshot.forEach(doc => { trackerExpenses.push({ id: doc.id, ...doc.data() }); });
@@ -1168,7 +1754,7 @@
                 window.updateTrackerUI();
             });
 
-            const soupRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'soupSystemData');
+            const soupRef = doc(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'settings', 'soupSystemData'); // Wealth Portal
             unsubscribeSoup = onSnapshot(soupRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
@@ -1185,6 +1771,27 @@
                     });
                 }
                 window.renderSoupMatrix();
+            });
+
+            // EveryTrace Data Listener (from EveryTrace.html)
+            const everyTraceDocRef = doc(db, 'artifacts', everytraceAppId, 'users', currentUser.uid);
+            everyTraceUnsubscribeData = onSnapshot(everyTraceDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    everyTraceState = {
+                        events: data.events || [],
+                        assets: data.assets || [],
+                        subs: data.subs || [],
+                        goals: data.goals || []
+                    };
+                } else {
+                    // No cloud data yet - initialize with empty arrays
+                    everyTraceState = { events: [], assets: [], subs: [], goals: [] };
+                }
+                window.renderAllEveryTrace();
+            }, (error) => {
+                console.error("EveryTrace Snapshot error: ", error);
+                window.showToast("Failed to sync EveryTrace data", "error");
             });
         }
 
@@ -1321,10 +1928,10 @@
             document.getElementById('we-input').value = Math.max(0, Math.floor(weVal));
 
             if (!window.isLoadingData && currentUser && db) {
-                const plannerRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'planner');
+                const plannerRef = doc(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'settings', 'planner');
                 setDoc(plannerRef, { income: income, wdInput: document.getElementById('wd-input').value, categories: categories, expenses: fixedExpenses }, { merge: true });
 
-                const budgetRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'budget');
+                const budgetRef = doc(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'settings', 'budget');
                 setDoc(budgetRef, { amount: Math.max(0, remaining / 4) }, { merge: true });
             }
 
@@ -1410,7 +2017,7 @@
 
             if (currentUser && db) {
                 try {
-                    await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses'), expenseData);
+                    await addDoc(collection(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'expenses'), expenseData);
                     document.getElementById('expense-form').reset();
                 } catch (error) { window.showModal("Error", "Could not save expense."); }
             } else {
@@ -1429,7 +2036,7 @@
             if (currentUser && db) {
                 if (toDelete.length === 0) return;
                 try {
-                    const deletePromises = toDelete.map(exp => deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses', exp.id)));
+                    const deletePromises = toDelete.map(exp => deleteDoc(doc(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'expenses', exp.id)));
                     await Promise.all(deletePromises);
                 } catch (error) { window.showModal("Error", "Could not clear current week."); }
             } else {
@@ -1440,7 +2047,7 @@
 
         window.deleteExpense = async function (id) {
             if (currentUser && db) {
-                try { await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'expenses', id)); }
+                try { await deleteDoc(doc(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'expenses', id)); }
                 catch (error) { window.showModal("Error", "Could not delete."); }
             } else {
                 trackerExpenses = trackerExpenses.filter(e => e.id !== id);
@@ -1548,7 +2155,7 @@
             const newBudget = parseFloat(document.getElementById('new-budget-input').value);
             if (isNaN(newBudget) || newBudget <= 0) return;
             if (currentUser && db) {
-                try { await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'budget'), { amount: newBudget }, { merge: true }); window.closeBudgetModal(); }
+                try { await setDoc(doc(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'settings', 'budget'), { amount: newBudget }, { merge: true }); window.closeBudgetModal(); }
                 catch (error) { window.showModal("Error", "Could not save."); }
             }
         };
@@ -1563,8 +2170,32 @@
             setTimeout(() => { document.getElementById('message-modal').classList.replace('flex', 'hidden'); }, 150);
         };
 
-        // Init UI
-        document.addEventListener('DOMContentLoaded', () => { window.switchTab('home'); });
+        // EveryTrace specific showToast (from EveryTrace.html)
+        window.showToast = function (message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `glass-card py-3 px-5 rounded-xl shadow-lg flex items-center gap-3 border-l-4 transform translate-y-2 opacity-0 transition-all duration-300 ${type === 'success' ? 'border-emerald-500' : type === 'error' ? 'border-red-500' : 'border-blue-500'
+                }`;
+
+            const icon = type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning' : 'ph-info';
+            const iconColor = type === 'success' ? 'text-emerald-500' : type === 'error' ? 'text-red-500' : 'text-blue-500';
+
+            toast.innerHTML = `
+                <i class="ph-bold ${icon} ${iconColor} text-lg"></i>
+                <span class="text-xs font-semibold">${message}</span>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        const showToast = window.showToast;
 
         // =========================================================================================
         // MATRIX RENDER & DYNAMIC CRUD ENGINE
@@ -1598,7 +2229,7 @@
                 const currentPrice = soupPriceState[h.id] !== undefined ? soupPriceState[h.id] : 10;
 
                 nameHeaderHTML += `
-                    <th onclick="window.openHerbEncyclopedia('${h.id}')" class="p-3 text-center border-l border-slate-200 cursor-pointer text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:underline transition-all font-semibold text-xs min-w-[90px]">
+                    <th onclick="window.openHerbEncyclopedia('${h.id}')" class="p-3 text-center border-l border-slate-200 cursor-pointer text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:underline transition-all font-semibold text-xs min-w-[90px]">
                         ${h.name} ℹ️
                     </th>`;
                 stockHeaderHTML += `
@@ -1638,7 +2269,7 @@
                 bodyHTML += `
                     <tr class="${rowStatusBg} transition-colors">
                         <td class="p-4 font-bold border-b border-slate-100 sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] ${allIngredientsAvailable ? 'bg-emerald-50' : 'bg-red-50'}">
-                            <span class="px-2 py-1 rounded-md border text-xs ${labelBadgeColor}">${recipe.name}</span>
+                            <span class="px-2 py-1 rounded-md border text-xs ${labelBadgeColor} dark:bg-opacity-20 dark:border-opacity-20">${recipe.name}</span>
                         </td>
                         <td class="p-4 text-slate-500 text-xs border-b border-slate-100">${recipe.category}</td>
                         <td class="p-4 text-right font-bold border-b border-slate-100 text-slate-800">RM ${finalRecipeCost.toFixed(2)}</td>
@@ -1663,7 +2294,7 @@
             if (!herb) return;
 
             document.getElementById('herb-modal-title').innerText = herb.name;
-            document.getElementById('herb-modal-prop').innerText = herb.prop;
+            document.getElementById('herb-modal-prop').innerText = herb.prop; // Fixed: was missing from EveryTrace.html
             document.getElementById('herb-modal-effects').innerText = herb.effects;
             document.getElementById('herb-modal-taboo').innerText = herb.taboo;
             document.getElementById('herb-modal-look').innerText = herb.look;
@@ -1717,7 +2348,7 @@
 
             if (!name || !id) return alert("Herb name and ID cannot be empty!");
             if (runtimeHerbs.some(h => h.id === id)) return alert("This ID already exists. Please choose a unique identifier.");
-
+            
             const newHerbObject = { id, name, prop, effects: textEffects, taboo, look, smell, img };
             runtimeHerbs.push(newHerbObject);
             soupStockState[id] = false;
@@ -1761,7 +2392,7 @@
         window.saveSoupMatrixToCloud = async function () {
             if (currentUser && db) {
                 try {
-                    const soupRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'soupSystemData');
+                    const soupRef = doc(db, 'artifacts', wealthAppId, 'users', currentUser.uid, 'settings', 'soupSystemData');
                     await setDoc(soupRef, { herbs: runtimeHerbs, recipes: runtimeRecipes, stock: soupStockState, prices: soupPriceState }, { merge: true });
                 } catch (e) { console.error("Cloud database write error", e); }
             } else {
